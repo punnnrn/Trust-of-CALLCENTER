@@ -8,6 +8,10 @@ using UnityEngine.UI;
 /// </summary>
 public class DebtPaymentUI : MonoBehaviour
 {
+    [Header("Computer Menu Control")]
+    [Tooltip("กลุ่มปุ่มเมนูหลักบนจอคอมที่จะให้ซ่อนเมื่อเปิดแผงจ่ายหนี้")]
+    [SerializeField] private GameObject menuButtonPanel;
+
     [Header("Panel Open/Close")]
     [Tooltip("ปุ่มที่ลอยอยู่ปกติ กดแล้วเปิดแผงจ่ายหนี้ (ปุ่มนี้จะซ่อนตัวเองตอนแผงเปิด)")]
     [SerializeField] private Button openButton;
@@ -71,6 +75,8 @@ public class DebtPaymentUI : MonoBehaviour
     {
         if (debtPanel != null) debtPanel.SetActive(true);
         if (openButton != null) openButton.gameObject.SetActive(false);
+
+        if (menuButtonPanel != null) menuButtonPanel.SetActive(false);
     }
 
     /// ปิดแผงจ่ายหนี้ แล้วเอาปุ่มเปิดกลับมาโชว์
@@ -78,6 +84,8 @@ public class DebtPaymentUI : MonoBehaviour
     {
         if (debtPanel != null) debtPanel.SetActive(false);
         if (openButton != null) openButton.gameObject.SetActive(true);
+
+        if (menuButtonPanel != null) menuButtonPanel.SetActive(true);
     }
 
     /// จ่ายหนี้ด้วยเงินสดทั้งหมดที่มีตอนนี้
