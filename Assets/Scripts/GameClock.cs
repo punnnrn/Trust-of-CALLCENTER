@@ -56,6 +56,10 @@ public class GameClock : MonoBehaviour
         }
         Instance = this;
 
+        // Continue: กลับไปเริ่มวันที่เซฟไว้ตั้งแต่ต้นวัน
+        if (SaveSystem.Loaded != null)
+            Day = Mathf.Max(1, SaveSystem.Loaded.day);
+
         Hour = startHour;
         Minute = 0;
         IsPaused = startPaused;

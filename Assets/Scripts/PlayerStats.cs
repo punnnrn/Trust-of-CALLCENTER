@@ -35,8 +35,10 @@ public class PlayerStats : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
 
-        Money = startMoney;
-        Debt = Mathf.Max(0, startingDebt);
+        // Continue: ใช้ค่าจากไฟล์เซฟ / New Game: ใช้ค่าตั้งต้นใน Inspector
+        SaveData save = SaveSystem.Loaded;
+        Money = save != null ? save.money : startMoney;
+        Debt = Mathf.Max(0, save != null ? save.debt : startingDebt);
     }
 
     private void Start() => RefreshUI();

@@ -45,7 +45,8 @@ public class HungerSystem : MonoBehaviour
         if (Instance != null && Instance != this) { Destroy(gameObject); return; }
         Instance = this;
 
-        Current = Mathf.Clamp(startHunger, 0f, maxHunger);
+        float initial = SaveSystem.Loaded != null ? SaveSystem.Loaded.hunger : startHunger;
+        Current = Mathf.Clamp(initial, 0f, maxHunger);
     }
 
     private void Start() => RefreshUI();

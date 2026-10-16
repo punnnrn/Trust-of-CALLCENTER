@@ -106,7 +106,57 @@ public class CallCenterManager : MonoBehaviour
         continueButton.gameObject.SetActive(false);
         if (resultPanel != null) resultPanel.SetActive(false);
 
+        RestoreCooldowns();
+
+        // New Game: เขียนเซฟวันที่ 1 ทันที เผื่อผู้เล่นออกกลางวันแรกแล้วกด Continue
+        if (SaveSystem.NewGameRequested)
+        {
+            SaveGame(1);
+            SaveSystem.NewGameRequested = false;
+        }
+
         runGameCoroutine = StartCoroutine(RunGame());
+    }
+
+    // ---------------- Save / Load ----------------
+
+    /// เซฟสถานะ "ต้นวัน" ของวัน dayToSave (Continue จะกลับมาเริ่มวันนั้นใหม่ตั้งแต่ต้น)
+    private void SaveGame(int dayToSave)
+    {
+        HungerSystem h = hunger != null ? hunger : HungerSystem.Instance;
+
+        SaveData data = new SaveData
+        {
+            day = dayToSave,
+            money = PlayerStats.Instance != null ? PlayerStats.Instance.Money : 0,
+            debt = PlayerStats.Instance != null ? PlayerStats.Instance.Debt : 0,
+            hunger = h != null ? h.Current : 100f
+        };
+
+        foreach (KeyValuePair<CallData, int> kv in lastResolvedDay)
+        {
+            if (kv.Key == null) continue;
+            data.callCooldowns.Add(new CallCooldownEntry
+            {
+                callName = kv.Key.name,
+                lastResolvedDay = kv.Value
+            });
+        }
+
+        SaveSystem.Save(data);
+    }
+
+    /// คืนค่า cooldown ของสายจากเซฟ (จับคู่ด้วยชื่อไฟล์ CallData)
+    private void RestoreCooldowns()
+    {
+        SaveData save = SaveSystem.Loaded;
+        if (save == null) return;
+
+        foreach (CallCooldownEntry entry in save.callCooldowns)
+        {
+            CallData match = calls.Find(c => c != null && c.name == entry.callName);
+            if (match != null) lastResolvedDay[match] = entry.lastResolvedDay;
+        }
     }
 
     private void OnDestroy()
@@ -321,6 +371,9 @@ public class CallCenterManager : MonoBehaviour
         int totalMoney = PlayerStats.Instance != null ? PlayerStats.Instance.Money : 0;
         int moneyToday = totalMoney - moneyAtDayStart;
         int day = GameClock.Instance != null ? GameClock.Instance.Day : 1;
+
+        // เซฟอัตโนมัติตอนจบวัน: เก็บสถานะต้นวันถัดไป (ถ้าออกระหว่างดูสรุปผล Continue จะเริ่มวันถัดไปเลย)
+        SaveGame(day + 1);
 
         string body =
             $"เงินที่ได้วันนี้: {Signed(moneyToday)}\n" +

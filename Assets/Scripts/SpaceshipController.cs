@@ -1,10 +1,11 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class SpaceshipController : MonoBehaviour
 {
     [Header("Movement")]
     public float moveSpeed = 500f;
-    public RectTransform screenBounds; // ขอบเขตหน้าจอคอมพิวเตอร์ 
+    public RectTransform screenBounds; // ขอบเขตหน้าจอคอมพิวเตอร์
     private RectTransform rectTransform;
 
     [Header("Shooting")]
@@ -19,8 +20,15 @@ public class SpaceshipController : MonoBehaviour
 
     private void Update()
     {
+        // ตอน Pause ไม่รับ input (ไม่งั้นคลิกปุ่มในเมนู Pause แล้วยิงกระสุนสะสมไว้)
+        if (Time.timeScale == 0f) return;
+
         Move();
-        if (Input.GetKeyDown(KeyCode.Space) || Input.GetMouseButtonDown(0))
+
+        // คลิกเมาส์ที่เป็นการกดปุ่ม UI (รับสาย/วางสาย/Start/Close ฯลฯ) ไม่นับเป็นการยิง
+        bool pointerOverUI = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
+
+        if (Input.GetKeyDown(KeyCode.Space) || (Input.GetMouseButtonDown(0) && !pointerOverUI))
         {
             Shoot();
         }

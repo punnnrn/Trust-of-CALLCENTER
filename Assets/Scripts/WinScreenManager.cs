@@ -45,6 +45,8 @@ public class WinScreenManager : MonoBehaviour
         if (hasWon) return; // กันเรียกซ้ำ
         hasWon = true;
 
+        SaveSystem.Delete(); // จบเกมแล้ว ลบเซฟ ไม่ให้ Continue กลับมาเล่นเกมที่ชนะไปแล้ว
+
         Time.timeScale = 0f;
         AudioListener.pause = true;
 
