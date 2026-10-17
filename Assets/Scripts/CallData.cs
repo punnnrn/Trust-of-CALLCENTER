@@ -16,6 +16,10 @@ public class CallData : ScriptableObject
     [Tooltip("สายนี้โทรมาได้ถึงวันที่เท่าไหร่ ใส่ 0 = ไม่จำกัด โทรมาได้ตลอดหลังจาก minDay")]
     public int maxDay = 0;
 
+    [Header("เงื่อนไขเงิน (สำหรับสุ่มเลือกสาย)")]
+    [Tooltip("ต้องมีเงินสดในมืออย่างน้อยเท่านี้ สายนี้ถึงจะโทรเข้ามาได้ (0 = ไม่จำกัด) นับเงินสดไม่ใช่หนี้")]
+    public int minMoney = 0;
+
     [Header("Dialogue (ตอนกดรับสาย)")]
     [TextArea(2, 4)] public string[] dialogueLines;
 

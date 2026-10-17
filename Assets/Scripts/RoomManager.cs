@@ -70,10 +70,11 @@ public class RoomManager : MonoBehaviour
         ShowRoomButtons(false);
     }
 
-    /// ปิดคอม กลับมาที่ห้อง
+    /// ปิดคอม กลับมาที่ห้อง (ปิดแผงถามยืนยันการนอนที่อาจค้างอยู่ด้วย เผื่อวันจบตอนแผงนั้นเปิดอยู่)
     public void CloseComputer()
     {
         if (computerScreenPanel != null) computerScreenPanel.SetActive(false);
+        if (sleepConfirmPanel != null) sleepConfirmPanel.SetActive(false);
         ShowRoomButtons(true);
     }
 
