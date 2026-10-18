@@ -62,6 +62,8 @@ public class CallCenterManager : MonoBehaviour
     [Tooltip("ตอนจบวันจะปิดมินิเกม/แผงจ่ายหนี้/คอม ให้เหมือนผู้เล่นเปิดคอมใหม่ ไม่ใส่ก็ได้")]
     [SerializeField] private SpaceMonneyManager spaceMonney;
     [SerializeField] private DebtPaymentUI debtPayment;
+    [Tooltip("ร้านค้าในคอม จบวันจะปิดแผงให้ ไม่ใส่ก็ได้")]
+    [SerializeField] private ShopUI shop;
     [SerializeField] private RoomManager room;
 
     [Header("UI - Day Result (โผล่หลังจบวัน)")]
@@ -489,6 +491,7 @@ public class CallCenterManager : MonoBehaviour
     {
         if (spaceMonney != null) spaceMonney.ResetForNewDay();
         if (debtPayment != null) debtPayment.ClosePanel();
+        if (shop != null) shop.ClosePanel();
         if (room != null) room.CloseComputer();
     }
 

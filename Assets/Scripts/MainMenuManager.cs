@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// ควบคุมปุ่มในหน้า Main Menu: New Game, Continue และออกจากเกม
-/// - New Game: ลบเซฟเก่าทิ้งแล้วเริ่มวันที่ 1 ใหม่หมด
+/// - New Game: ลบเซฟเก่าทิ้งแล้วเริ่มวันที่ 1 ใหม่หมด (ถ้ามีเซฟอยู่ จะถามยืนยันก่อน)
 /// - Continue: โหลดเซฟล่าสุด (กลับไปเริ่มวันที่เซฟไว้ตั้งแต่ต้นวัน) ปุ่มจะซ่อนถ้ายังไม่มีเซฟ
 /// ผูกกับปุ่มผ่าน OnClick() ใน Inspector ได้โดยตรง
 /// </summary>
@@ -18,17 +18,40 @@ public class MainMenuManager : MonoBehaviour
     [Tooltip("ปุ่ม Continue ที่จะถูกซ่อนเมื่อยังไม่มีเซฟ")]
     [SerializeField] private Button continueButton;
 
+    [Tooltip("แผงถามยืนยันตอนกด New Game ทั้งที่มีเซฟอยู่ (ไม่ใส่ก็ได้ จะเริ่มเกมใหม่ทันทีเหมือนเดิม)")]
+    [SerializeField] private GameObject newGameConfirmPanel;
+
     private void Start()
     {
         if (continueButton != null)
             continueButton.gameObject.SetActive(SaveSystem.HasSave());
+
+        if (newGameConfirmPanel != null) newGameConfirmPanel.SetActive(false);
     }
 
-    /// เรียกจากปุ่ม "New Game"
+    /// เรียกจากปุ่ม "New Game": ถ้ามีเซฟอยู่จะเปิดแผงถามยืนยันก่อน ไม่มีเซฟก็เริ่มเลย
     public void NewGame()
     {
+        if (newGameConfirmPanel != null && SaveSystem.HasSave())
+        {
+            newGameConfirmPanel.SetActive(true);
+            return;
+        }
+        ConfirmNewGame();
+    }
+
+    /// เรียกจากปุ่ม "ยืนยัน" ในแผงถาม: ลบเซฟเก่าแล้วเริ่มวันที่ 1 ใหม่
+    public void ConfirmNewGame()
+    {
+        if (newGameConfirmPanel != null) newGameConfirmPanel.SetActive(false);
         SaveSystem.StartNewGame();
         LoadGameplay();
+    }
+
+    /// เรียกจากปุ่ม "ยกเลิก" ในแผงถาม: ปิดแผง กลับมาที่เมนู เซฟเก่ายังอยู่
+    public void CancelNewGame()
+    {
+        if (newGameConfirmPanel != null) newGameConfirmPanel.SetActive(false);
     }
 
     /// เรียกจากปุ่ม "Continue"

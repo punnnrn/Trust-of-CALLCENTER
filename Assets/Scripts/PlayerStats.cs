@@ -57,6 +57,18 @@ public class PlayerStats : MonoBehaviour
         RefreshUI();
     }
 
+    /// ใช้จ่ายเงินสด (เช่นซื้อของในร้าน): เงินพอก็หักแล้วคืน true ไม่พอไม่หักอะไรและคืน false
+    public bool TrySpend(int amount)
+    {
+        if (amount < 0 || Money < amount) return false;
+        if (amount == 0) return true;
+
+        Money -= amount;
+        OnMoneyChanged?.Invoke(Money);
+        RefreshUI();
+        return true;
+    }
+
     /// เพิ่มหนี้ตรงๆ (เผื่อทำสายหลอกที่ทำให้หนี้งอกในอนาคต) ไม่ลดต่ำกว่า 0
     public void AddDebt(int amount)
     {
