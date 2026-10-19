@@ -78,6 +78,14 @@ public class RoomManager : MonoBehaviour
         ShowRoomButtons(true);
     }
 
+    /// จบเกม (แพ้): ปิดคอม/แผงถามนอนที่เปิดค้างอยู่ แล้วซ่อนปุ่มเตียงกับปุ่มคอมถาวร ไม่ให้กดอะไรต่อได้
+    public void LockForGameOver()
+    {
+        if (computerScreenPanel != null) computerScreenPanel.SetActive(false);
+        if (sleepConfirmPanel != null) sleepConfirmPanel.SetActive(false);
+        ShowRoomButtons(false);
+    }
+
     private void ShowRoomButtons(bool show)
     {
         if (bedButton != null) bedButton.gameObject.SetActive(show);

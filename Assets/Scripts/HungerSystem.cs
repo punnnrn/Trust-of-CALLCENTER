@@ -32,6 +32,8 @@ public class HungerSystem : MonoBehaviour
     public event Action<float> OnHungerChanged;
     /// เพิ่งหิวจนถึง 0 (ยิงครั้งเดียวตอนเปลี่ยนสถานะ)
     public event Action OnStarving;
+    /// มีการกินอาหาร (เรียก Eat) ทุกครั้ง ไม่ว่าความหิวจะเต็มอยู่แล้วหรือไม่ ใช้นับว่า "วันนี้ได้กินแล้ว"
+    public event Action OnAte;
     /// เพิ่งกินจนพ้นสถานะหิวจัด
     public event Action OnRecovered;
 
@@ -62,7 +64,11 @@ public class HungerSystem : MonoBehaviour
     public void OnWorkCompleted() => Change(-drainPerWork);
 
     /// กินอาหาร เพิ่มความอิ่ม (เรียกจากร้านค้า)
-    public void Eat(float amount) => Change(+Mathf.Abs(amount));
+    public void Eat(float amount)
+    {
+        Change(+Mathf.Abs(amount));
+        OnAte?.Invoke();
+    }
 
     /// ลดความหิวแบบทันที (เช่น อีเวนต์พิเศษ)
     public void Drain(float amount) => Change(-Mathf.Abs(amount));

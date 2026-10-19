@@ -12,7 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2340bfb5e4fd7e34f82e8b1343cc74da, type: 3}
   m_Name: ChickenWing
   m_EditorClassIdentifier: Assembly-CSharp::FoodData
-  foodName: "\u0E2D\u0E32\u0E2B\u0E32\u0E23"
+  foodName: "\u0E1B\u0E35\u0E01\u0E44\u0E01\u0E48"
   icon: {fileID: 0}
-  price: 50
+  price: 20
   hungerRestore: 10
+  minStock: 0
+  maxStock: 3
+  unlimitedStock: 0

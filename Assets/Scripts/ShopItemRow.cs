@@ -14,6 +14,10 @@ public class ShopItemRow : MonoBehaviour
     [SerializeField] private TMP_Text priceText;
     [SerializeField] private TMP_Text hungerText;  // ไม่ใส่ก็ได้
     [SerializeField] private Button buyButton;
+    [Tooltip("ไม่ใส่ก็ได้ ใช้โชว์จำนวนที่เหลือ เช่น \"เหลือ 2\"")]
+    [SerializeField] private TMP_Text stockText;
+    [Tooltip("ไม่ใส่ก็ได้ Object ที่จะโผล่ตอนของหมด เช่น ป้าย \"หมด\" หรือแผ่นสีเทาโปร่งใสทับการ์ด")]
+    [SerializeField] private GameObject soldOutOverlay;
 
     public FoodData Food { get; private set; }
 
@@ -35,6 +39,21 @@ public class ShopItemRow : MonoBehaviour
         {
             buyButton.onClick.RemoveAllListeners();
             buyButton.onClick.AddListener(() => onBuy?.Invoke(food));
+        }
+    }
+
+    /// อัปเดตจำนวนคงเหลือ: stock < 0 = ขายไม่อั้น, 0 = หมด (ปุ่มกดไม่ได้)
+    public void SetStock(int stock, string stockFormat, string soldOutText)
+    {
+        bool soldOut = stock == 0;
+
+        if (buyButton != null) buyButton.interactable = !soldOut;
+        if (soldOutOverlay != null) soldOutOverlay.SetActive(soldOut);
+
+        if (stockText != null)
+        {
+            stockText.gameObject.SetActive(stock >= 0);
+            stockText.text = soldOut ? soldOutText : string.Format(stockFormat, stock);
         }
     }
 }

@@ -43,6 +43,8 @@ public class CallCenterManager : MonoBehaviour
     [SerializeField] private GameObject callPanel;
     [SerializeField] private TMP_Text callerNameText;
     [SerializeField] private TMP_Text dialogueText;
+    [Tooltip("กรอบของกล่อง dialogue (Image ใส่รูปได้) จะโผล่และหายพร้อมกับข้อความเสมอ ไม่ใส่ก็ได้")]
+    [SerializeField] private GameObject dialogueFrame;
     [SerializeField] private Image portraitImage;
 
     [Header("UI - Buttons (ใช้ 2 ปุ่มนี้ทั้งตอนสายเข้าและตอนตัดสินใจ)")]
@@ -64,6 +66,8 @@ public class CallCenterManager : MonoBehaviour
     [SerializeField] private DebtPaymentUI debtPayment;
     [Tooltip("ร้านค้าในคอม จบวันจะปิดแผงให้ ไม่ใส่ก็ได้")]
     [SerializeField] private ShopUI shop;
+    [Tooltip("หน้าบิลในคอม จบวันจะปิดแผงให้ ไม่ใส่ก็ได้")]
+    [SerializeField] private BillsUI billsUI;
     [SerializeField] private RoomManager room;
 
     [Header("UI - Day Result (โผล่หลังจบวัน)")]
@@ -128,6 +132,7 @@ public class CallCenterManager : MonoBehaviour
     private void Start()
     {
         EnsurePhonePositions();
+        SetDialogueVisible(false);
         HidePopup();
         callPanel.SetActive(false);
         SetChoiceButtons(false);
@@ -158,8 +163,15 @@ public class CallCenterManager : MonoBehaviour
             day = dayToSave,
             money = PlayerStats.Instance != null ? PlayerStats.Instance.Money : 0,
             debt = PlayerStats.Instance != null ? PlayerStats.Instance.Debt : 0,
-            hunger = h != null ? h.Current : 100f
+            hunger = h != null ? h.Current : 100f,
+            daysWithoutFood = StarvationSystem.Instance != null ? StarvationSystem.Instance.DaysWithoutFood : 0
         };
+
+        if (BillSystem.Instance != null)
+        {
+            data.lastBillDay = BillSystem.Instance.LastBillDay;
+            data.bills = new List<Bill>(BillSystem.Instance.Bills);
+        }
 
         foreach (KeyValuePair<CallData, int> kv in lastResolvedDay)
         {
@@ -492,6 +504,7 @@ public class CallCenterManager : MonoBehaviour
         if (spaceMonney != null) spaceMonney.ResetForNewDay();
         if (debtPayment != null) debtPayment.ClosePanel();
         if (shop != null) shop.ClosePanel();
+        if (billsUI != null) billsUI.ClosePanel();
         if (room != null) room.CloseComputer();
     }
 
@@ -535,6 +548,29 @@ public class CallCenterManager : MonoBehaviour
         if (phoneRect != null) phoneRect.anchoredPosition = phoneShownPos;
         HidePopup();
 
+        // แพ้เพราะไม่ได้กินอาหารครบกำหนด: ไม่เซฟ ไม่โชว์สรุปผล ลบเซฟแล้วโชว์หน้าแพ้ค้างไว้
+        if (StarvationSystem.Instance != null && StarvationSystem.Instance.HasLost)
+        {
+            int loseDay = GameClock.Instance != null ? GameClock.Instance.Day : 1;
+            StarvationSystem.Instance.TriggerLose(loseDay);
+            yield return new WaitUntil(() => false); // ค้างตรงนี้ ไม่ให้เกมวนไปวันถัดไปข้างหลัง
+        }
+
+        // หักบิลที่ถึงกำหนดอัตโนมัติ ถ้าเงินสดไม่พอจ่าย = แพ้
+        int billsAutoPaid = 0;
+        if (BillSystem.Instance != null)
+        {
+            int billDay = GameClock.Instance != null ? GameClock.Instance.Day : 1;
+            string failedBill;
+            if (!BillSystem.Instance.ProcessDayEnd(billDay, out billsAutoPaid, out failedBill))
+            {
+                string msg = $"จ่าย{failedBill}ไม่ไหว\n\nอยู่รอดมาได้ {billDay} วัน";
+                if (StarvationSystem.Instance != null) StarvationSystem.Instance.TriggerLoseWithMessage(msg);
+                else SaveSystem.Delete();
+                yield return new WaitUntil(() => false);
+            }
+        }
+
         hunger?.RefillFull(); // นอนเต็มอิ่มทุกครั้งที่จบวัน ไม่ว่าจบเพราะหมดเวลาหรือกดนอนเอง
         ResetComputerForNewDay(); // ปิดมินิเกม/คอม เหมือนเปิดคอมใหม่ในวันถัดไป
 
@@ -552,6 +588,15 @@ public class CallCenterManager : MonoBehaviour
             $"พลาด/วางสาย: {callsMissedToday} สาย\n\n" +
             $"ตกลงรับงาน: {jobsAcceptedToday} ครั้ง\n" +
             $"ปฏิเสธงาน: {jobsDeclinedToday} ครั้ง";
+
+        if (billsAutoPaid > 0)
+            body += $"\n\nหักค่าบิลอัตโนมัติ: -{billsAutoPaid}";
+        if (BillSystem.Instance != null && BillSystem.Instance.UnpaidCount > 0)
+            body += $"\nบิลค้างจ่าย: {BillSystem.Instance.UnpaidCount} ใบ";
+
+        StarvationSystem starve = StarvationSystem.Instance;
+        if (starve != null && starve.DaysWithoutFood > 0)
+            body += $"\n\nเตือน: ไม่ได้กินอาหารมา {starve.DaysWithoutFood}/{starve.Limit} วัน ถ้าครบจะแพ้!";
 
         if (resultPanel != null)
         {
@@ -662,6 +707,7 @@ public class CallCenterManager : MonoBehaviour
 
     private void SetDialogueVisible(bool visible)
     {
+        if (dialogueFrame != null) dialogueFrame.SetActive(visible);
         if (dialogueText != null) dialogueText.gameObject.SetActive(visible);
     }
 

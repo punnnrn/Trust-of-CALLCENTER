@@ -41,6 +41,9 @@ public class PauseManager : MonoBehaviour
     {
         if (Input.GetKeyDown(KeyCode.P) || Input.GetKeyDown(KeyCode.Escape))
         {
+            // เวลาถูกหยุดโดยระบบอื่นอยู่แล้ว (หน้าชนะ/หน้าแพ้) ไม่ให้กด Pause แล้ว Resume ทำให้เกมเดินต่อ
+            if (!IsPaused && Time.timeScale == 0f) return;
+
             Toggle();
         }
     }

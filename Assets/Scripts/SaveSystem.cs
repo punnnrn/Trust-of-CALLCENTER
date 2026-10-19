@@ -19,6 +19,9 @@ public class SaveData
     public int money;
     public int debt;
     public float hunger = 100f;
+    public int daysWithoutFood; // ตัวนับวันที่ไม่ได้กินอาหารติดต่อกัน (StarvationSystem)
+    public int lastBillDay = -1; // วันล่าสุดที่ออกบิลไปแล้ว (BillSystem) -1 = เซฟเก่าที่ยังไม่มีข้อมูลบิล
+    public List<Bill> bills = new List<Bill>(); // บิลที่ยังไม่จ่าย
     public List<CallCooldownEntry> callCooldowns = new List<CallCooldownEntry>();
 }
 
