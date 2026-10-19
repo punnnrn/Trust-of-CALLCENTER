@@ -906,7 +906,7 @@ MonoBehaviour:
   dueDateText: {fileID: 280643643834081820}
   dueNoteText: {fileID: 5914972880963378843}
   amountText: {fileID: 5852048773938355389}
-  payButton: {fileID: 0}
+  payButton: {fileID: 6779044207094301177}
   urgentColor: {r: 0.9, g: 0.6, b: 0.1, a: 1}
   normalColor: {r: 0.55, g: 0.55, b: 0.6, a: 1}
 --- !u!1 &7671208579257212543
