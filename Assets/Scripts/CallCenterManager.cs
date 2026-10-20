@@ -548,6 +548,13 @@ public class CallCenterManager : MonoBehaviour
         if (phoneRect != null) phoneRect.anchoredPosition = phoneShownPos;
         HidePopup();
 
+        // หนี้หมดแล้ว: ต้องผ่านจบวัน (นอน/หมดเวลา) ก่อน ถึงจะขึ้นหน้าชนะ (เช็คก่อนเงื่อนไขแพ้ทั้งหมด)
+        if (WinScreenManager.Instance != null && PlayerStats.Instance != null && PlayerStats.Instance.IsDebtCleared)
+        {
+            WinScreenManager.Instance.ShowWin();
+            yield return new WaitUntil(() => false); // ค้างตรงนี้ ไม่ให้เกมวนไปวันถัดไปข้างหลัง
+        }
+
         // แพ้เพราะไม่ได้กินอาหารครบกำหนด: ไม่เซฟ ไม่โชว์สรุปผล ลบเซฟแล้วโชว์หน้าแพ้ค้างไว้
         if (StarvationSystem.Instance != null && StarvationSystem.Instance.HasLost)
         {

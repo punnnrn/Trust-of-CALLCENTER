@@ -5989,6 +5989,10 @@ MonoBehaviour:
   calls:
   - {fileID: 11400000, guid: c115b0fcb46724c4bb98905b72df6672, type: 2}
   - {fileID: 11400000, guid: 1e488ee7316c39849a9346f156a5c1ed, type: 2}
+  - {fileID: 11400000, guid: cbd1e4dacdf4d3941b010c2e0f4433ab, type: 2}
+  - {fileID: 11400000, guid: db973c28d8233794889299230ab7af76, type: 2}
+  - {fileID: 11400000, guid: de6ea97b19c4db145b81cb47578a42b3, type: 2}
+  - {fileID: 11400000, guid: 3ec4bc59f3530b3428769b00e18f196e, type: 2}
   repeatCooldownDays: 1
   delayBetweenCalls: {x: 1.5, y: 3.5}
   ringTimeoutRange: {x: 5, y: 10}
@@ -11376,6 +11380,8 @@ MonoBehaviour:
   winPanel: {fileID: 502391857}
   winText: {fileID: 1471344284}
   backToMenuButton: {fileID: 1696712349}
+  pendingHint: {fileID: 0}
+  room: {fileID: 0}
   mainMenuSceneName: MainMenu
 --- !u!4 &1668936402
 Transform:
