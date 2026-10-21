@@ -15,11 +15,11 @@ public class CallCenterManager : MonoBehaviour
 
     [Header("Calls (สุ่มเลือกจากลิสต์นี้)")]
     [SerializeField] private List<CallData> calls = new List<CallData>();
-    [Tooltip("หลังจากคุยสายนี้จบ (หรือไม่รับสาย) แล้ว ต้องรอกี่วันถึงจะโทรมาซ้ำได้")]
-    [SerializeField] private int repeatCooldownDays = 1;
 
-    // จำวันล่าสุดที่สายนี้ถูก "จบ" ไปแล้ว (คุยจบ/กดไม่รับ/ปล่อยขาดสาย) ใช้กันโทรซ้ำถี่เกินไป
-    private readonly Dictionary<CallData, int> lastResolvedDay = new Dictionary<CallData, int>();
+    // วันที่สายนี้จะโทรมาได้อีก (int.MaxValue = ไม่โทรมาอีก) ตั้งค่าตอนสายจบ ตาม CallbackDays ของผลลัพธ์นั้น
+    private readonly Dictionary<CallData, int> nextCallDay = new Dictionary<CallData, int>();
+    // จำนวนครั้งที่สายนี้โทรเข้ามาแล้ว (ใช้เทียบกับ maxCalls)
+    private readonly Dictionary<CallData, int> callCounts = new Dictionary<CallData, int>();
     [Tooltip("ช่วงเวลาจริง (วินาที) ระหว่างที่วางสาย/จบสายก่อนสายถัดไปจะเริ่มนับ")]
     [SerializeField] private Vector2 delayBetweenCalls = new Vector2(8f, 20f);
 
@@ -45,7 +45,10 @@ public class CallCenterManager : MonoBehaviour
     [SerializeField] private TMP_Text dialogueText;
     [Tooltip("กรอบของกล่อง dialogue (Image ใส่รูปได้) จะโผล่และหายพร้อมกับข้อความเสมอ ไม่ใส่ก็ได้")]
     [SerializeField] private GameObject dialogueFrame;
+    [Tooltip("รูปคนในสาย")]
     [SerializeField] private Image portraitImage;
+    [Tooltip("รูปตัวละครหลักของเรา (Image อีกอัน) ไม่ใส่ก็ได้")]
+    [SerializeField] private Image playerPortraitImage;
 
     [Header("UI - Buttons (ใช้ 2 ปุ่มนี้ทั้งตอนสายเข้าและตอนตัดสินใจ)")]
     [SerializeField] private Button acceptButton;   // ปุ่มซ้าย: รับสาย / ตกลง
@@ -107,6 +110,12 @@ public class CallCenterManager : MonoBehaviour
     private int jobsDeclinedToday;
 
     private Coroutine runGameCoroutine;
+
+    // รูปที่ใช้อยู่ในสายปัจจุบัน
+    private Sprite activeCallerSprite;
+    private Sprite activePlayerSprite;
+    private DialogueSpeaker currentSpeaker = DialogueSpeaker.Caller;
+    private bool dialogueVisible;
 
     private void Awake()
     {
@@ -173,13 +182,15 @@ public class CallCenterManager : MonoBehaviour
             data.bills = new List<Bill>(BillSystem.Instance.Bills);
         }
 
-        foreach (KeyValuePair<CallData, int> kv in lastResolvedDay)
+        foreach (CallData c in calls)
         {
-            if (kv.Key == null) continue;
+            if (c == null) continue;
+            if (!nextCallDay.ContainsKey(c) && !callCounts.ContainsKey(c)) continue;
             data.callCooldowns.Add(new CallCooldownEntry
             {
-                callName = kv.Key.name,
-                lastResolvedDay = kv.Value
+                callName = c.name,
+                nextCallDay = nextCallDay.TryGetValue(c, out int nd) ? nd : 0,
+                callCount = callCounts.TryGetValue(c, out int cc) ? cc : 0
             });
         }
 
@@ -195,7 +206,9 @@ public class CallCenterManager : MonoBehaviour
         foreach (CallCooldownEntry entry in save.callCooldowns)
         {
             CallData match = calls.Find(c => c != null && c.name == entry.callName);
-            if (match != null) lastResolvedDay[match] = entry.lastResolvedDay;
+            if (match == null) continue;
+            nextCallDay[match] = entry.nextCallDay;
+            callCounts[match] = entry.callCount;
         }
     }
 
@@ -289,13 +302,16 @@ public class CallCenterManager : MonoBehaviour
     {
         yield return RingPhase(call);
 
+        int callbackDays; // จะโทรมาอีกในกี่วัน (0 = ไม่โทรมาอีก) ตามผลลัพธ์ของสายนี้
+
         if (!accepted)
         {
             callsMissedToday++;
+            callbackDays = call.hangUpCallbackDays;
             PlayerStats.Instance?.AddMoney(call.hangUpMoney);
 
             if (phoneOpened)
-                yield return ShowResult(call.hangUpResult, call.hangUpMoney);
+                yield return ShowOutcome(call.hangUpReply, call.hangUpResult, call.hangUpMoney);
             else
                 yield return ShowMissedToast(call); // ไม่ได้คลิกป๊อปอัปเลย แค่แจ้งสั้นๆ ไม่ดึงผู้เล่นเข้าหน้าโทรศัพท์
         }
@@ -317,14 +333,16 @@ public class CallCenterManager : MonoBehaviour
             if (accepted)
             {
                 jobsAcceptedToday++;
+                callbackDays = call.acceptCallbackDays;
                 PlayerStats.Instance?.AddMoney(call.acceptMoney);
-                yield return ShowResult(call.acceptResult, call.acceptMoney);
+                yield return ShowOutcome(call.acceptReply, call.acceptResult, call.acceptMoney);
             }
             else
             {
                 jobsDeclinedToday++;
+                callbackDays = call.declineCallbackDays;
                 PlayerStats.Instance?.AddMoney(call.declineMoney);
-                yield return ShowResult(call.declineResult, call.declineMoney);
+                yield return ShowOutcome(call.declineReply, call.declineResult, call.declineMoney);
             }
         }
 
@@ -341,9 +359,10 @@ public class CallCenterManager : MonoBehaviour
         }
         callPanel.SetActive(false);
 
-        // ไม่ว่าจบแบบไหน (คุยจบ/ไม่รับ/ขาดสาย) ให้จำวันไว้กันโทรซ้ำถี่เกินไป
+        // สายจบแล้ว: นับจำนวนครั้ง และตั้งวันที่จะโทรมาได้อีก (0 = ไม่โทรมาอีก)
         int today = GameClock.Instance != null ? GameClock.Instance.Day : 1;
-        lastResolvedDay[call] = today;
+        callCounts[call] = (callCounts.TryGetValue(call, out int count) ? count : 0) + 1;
+        nextCallDay[call] = callbackDays <= 0 ? int.MaxValue : today + callbackDays;
     }
 
     /// สายดัง: โชว์ป๊อปอัปมุมขวาล่าง → ผู้เล่นคลิก → โทรศัพท์เลื่อนขึ้น → รับสาย/วางสาย
@@ -356,7 +375,9 @@ public class CallCenterManager : MonoBehaviour
         phoneOpened = false;
 
         callerNameText.text = call.callerName;
-        SetPortrait(call.callerPortrait);
+        activeCallerSprite = call.callerPortrait;
+        activePlayerSprite = call.playerPortrait;
+        SetSpeaker(DialogueSpeaker.Caller);
         dialogueText.maxVisibleCharacters = int.MaxValue;
         dialogueText.text = "";
         SetDialogueVisible(false); // ตอนสายดัง/เพิ่งหยิบโทรศัพท์ ไม่มี dialog แค่ปุ่มรับสาย-วางสาย
@@ -510,10 +531,11 @@ public class CallCenterManager : MonoBehaviour
 
     private IEnumerator TalkPhase(CallData call)
     {
-        string[] lines = call.dialogueLines;
+        DialogueLine[] lines = call.GetConversation();
 
-        if (lines == null || lines.Length == 0)
+        if (lines.Length == 0)
         {
+            SetSpeaker(DialogueSpeaker.Caller);
             yield return TypeLine("(ไม่มีเสียงตอบกลับ...)");
             yield break;
         }
@@ -521,25 +543,45 @@ public class CallCenterManager : MonoBehaviour
         for (int i = 0; i < lines.Length; i++)
         {
             bool isLast = i == lines.Length - 1;
+            DialogueLine line = lines[i];
+            SetSpeaker(line != null ? line.speaker : DialogueSpeaker.Caller);
+            string text = line != null ? line.text : "";
 
             if (!isLast)
             {
-                yield return ShowLineAndWait(lines[i]);
+                yield return ShowLineAndWait(text);
             }
             else
             {
                 // ประโยคสุดท้าย: พิมพ์จบแล้วขึ้นปุ่มตัดสินใจเลย
                 continueButton.gameObject.SetActive(true);
-                yield return TypeLine(lines[i]);
+                yield return TypeLine(text);
                 continueButton.gameObject.SetActive(false);
             }
         }
     }
 
-    private IEnumerator ShowResult(string message, int moneyChange)
+    /// ผลหลังตัดสินใจ: ถ้ามีบทสนทนา (reply) เล่นทีละประโยคตามคนพูด ประโยคสุดท้ายต่อท้ายด้วยเงินที่ได้/เสีย
+    /// ถ้าไม่มี reply ใช้ข้อความธรรมดา (fallbackText) เหมือนเดิม
+    private IEnumerator ShowOutcome(DialogueLine[] reply, string fallbackText, int moneyChange)
     {
         string summary = $"\n\n<size=70%>เงิน {Signed(moneyChange)}</size>";
-        yield return ShowLineAndWait(message + summary);
+
+        if (reply == null || reply.Length == 0)
+        {
+            SetSpeaker(DialogueSpeaker.Caller);
+            yield return ShowLineAndWait(fallbackText + summary);
+            yield break;
+        }
+
+        for (int i = 0; i < reply.Length; i++)
+        {
+            DialogueLine line = reply[i];
+            SetSpeaker(line != null ? line.speaker : DialogueSpeaker.Caller);
+            string text = line != null ? line.text : "";
+            if (i == reply.Length - 1) text += summary;
+            yield return ShowLineAndWait(text);
+        }
     }
 
     private IEnumerator EndDay()
@@ -623,7 +665,7 @@ public class CallCenterManager : MonoBehaviour
             // เผื่อยังไม่ได้ต่อ UI แผงสรุปผล ใช้แผงสายเดิมแสดงแทนไปก่อน
             callPanel.SetActive(true);
             callerNameText.text = $"สรุปผลวันที่ {day}";
-            SetPortrait(null);
+            activeCallerSprite = null; activePlayerSprite = null; HidePortraits();
             SetChoiceButtons(false);
             yield return ShowLineAndWait(body);
             callPanel.SetActive(false);
@@ -643,6 +685,8 @@ public class CallCenterManager : MonoBehaviour
     {
         int day = GameClock.Instance != null ? GameClock.Instance.Day : 1;
         int money = PlayerStats.Instance != null ? PlayerStats.Instance.Money : 0;
+        int hour = GameClock.Instance != null ? GameClock.Instance.Hour : 0;
+        int minute = GameClock.Instance != null ? GameClock.Instance.Minute : 0;
 
         List<CallData> eligible = new List<CallData>();
         foreach (CallData c in calls)
@@ -651,10 +695,12 @@ public class CallCenterManager : MonoBehaviour
             if (day < c.minDay) continue;
             if (c.maxDay > 0 && day > c.maxDay) continue;
             if (money < c.minMoney) continue; // เงินสดยังไม่ถึงเกณฑ์ของสายนี้
+            if (GameClock.Instance != null && !c.IsInTimeWindow(hour, minute)) continue; // ยังไม่ถึง/เลยช่วงเวลาของสายนี้
 
-            if (lastResolvedDay.TryGetValue(c, out int resolvedDay) &&
-                day - resolvedDay < repeatCooldownDays)
-                continue; // ยังอยู่ในช่วงพัก ไม่ให้โทรมาซ้ำ
+            if (c.maxCalls > 0 && callCounts.TryGetValue(c, out int count) && count >= c.maxCalls)
+                continue; // โทรมาครบจำนวนครั้งที่กำหนดแล้ว
+            if (nextCallDay.TryGetValue(c, out int nextDay) && day < nextDay)
+                continue; // ยังไม่ถึงวันที่จะโทรมาอีก (หรือไม่โทรมาอีกเลย)
 
             eligible.Add(c);
         }
@@ -714,6 +760,8 @@ public class CallCenterManager : MonoBehaviour
 
     private void SetDialogueVisible(bool visible)
     {
+        dialogueVisible = visible;
+        RefreshPortraits(); // รูปโผล่/หายพร้อมกรอบและข้อความ
         if (dialogueFrame != null) dialogueFrame.SetActive(visible);
         if (dialogueText != null) dialogueText.gameObject.SetActive(visible);
     }
@@ -724,11 +772,34 @@ public class CallCenterManager : MonoBehaviour
         declineButton.gameObject.SetActive(active);
     }
 
-    private void SetPortrait(Sprite sprite)
+    /// เลือกคนที่กำลังพูด (เรียกก่อนพิมพ์ทุกประโยค) รูปจะโชว์เฉพาะคนนั้น ตำแหน่งเดียวกัน
+    private void SetSpeaker(DialogueSpeaker speaker)
     {
-        if (portraitImage == null) return;
-        portraitImage.gameObject.SetActive(sprite != null);
-        portraitImage.sprite = sprite;
+        currentSpeaker = speaker;
+        RefreshPortraits();
+    }
+
+    private void RefreshPortraits()
+    {
+        bool callerSpeaking = currentSpeaker == DialogueSpeaker.Caller;
+        ApplyPortrait(portraitImage, activeCallerSprite, dialogueVisible && callerSpeaking);
+        ApplyPortrait(playerPortraitImage, activePlayerSprite, dialogueVisible && !callerSpeaking);
+    }
+
+    private void ApplyPortrait(Image img, Sprite sprite, bool show)
+    {
+        if (img == null) return;
+        bool on = show && sprite != null;
+        img.gameObject.SetActive(on);
+        if (!on) return;
+        img.sprite = sprite;
+        img.color = Color.white;
+    }
+
+    private void HidePortraits()
+    {
+        if (portraitImage != null) portraitImage.gameObject.SetActive(false);
+        if (playerPortraitImage != null) playerPortraitImage.gameObject.SetActive(false);
     }
 
     private static string Signed(int v) => v > 0 ? $"+{v}" : v.ToString();

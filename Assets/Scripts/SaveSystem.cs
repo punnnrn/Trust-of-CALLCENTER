@@ -7,7 +7,8 @@ using UnityEngine;
 public class CallCooldownEntry
 {
     public string callName;
-    public int lastResolvedDay;
+    public int nextCallDay;   // โทรมาได้อีกตั้งแต่วันที่นี้ (int.MaxValue = ไม่โทรมาอีก)
+    public int callCount;     // จำนวนครั้งที่สายนี้โทรเข้ามาแล้ว
 }
 
 /// <summary>ข้อมูลที่เซฟลงไฟล์ (สถานะ "ต้นวัน" ที่จะกลับมาเล่นต่อ)</summary>
