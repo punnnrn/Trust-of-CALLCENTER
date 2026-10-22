@@ -36,7 +36,7 @@ MonoBehaviour:
   acceptLabel: "\u0E01\u0E14 1 "
   declineLabel: "\u0E09\u0E31\u0E19\u0E44\u0E21\u0E48\u0E40\u0E04\u0E22\u0E44\u0E1B\u0E2B\u0E49\u0E32\u0E07\u0E19\u0E31\u0E49\u0E19
     \u0E01\u0E14\u0E27\u0E32\u0E07\u0E2A\u0E32\u0E22"
-  acceptMoney: -20000
+  acceptMoney: -19895
   acceptCallbackDays: 1
   acceptReply:
   - speaker: 0
@@ -57,7 +57,7 @@ MonoBehaviour:
   declineReply: []
   declineResult: "\u0E17\u0E33\u0E44\u0E21\u0E15\u0E49\u0E2D\u0E07\u0E2A\u0E48\u0E07\u0E43\u0E2B\u0E49\u0E14\u0E49\u0E27\u0E22
     \u0E15\u0E31\u0E14\u0E2A\u0E32\u0E22\u0E17\u0E34\u0E49\u0E07"
-  hangUpMoney: 0
+  hangUpMoney: 28
   hangUpCallbackDays: 1
   hangUpReply: []
   hangUpResult: "\u0E04\u0E38\u0E13\u0E44\u0E21\u0E48\u0E44\u0E14\u0E49\u0E23\u0E31\u0E1A\u0E2A\u0E32\u0E22\u0E19\u0E35\u0E49"

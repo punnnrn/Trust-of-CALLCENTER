@@ -605,6 +605,16 @@ public class CallCenterManager : MonoBehaviour
             yield return new WaitUntil(() => false); // ค้างตรงนี้ ไม่ให้เกมวนไปวันถัดไปข้างหลัง
         }
 
+        // เงินสดติดลบตอนจบวัน (เช่น โดนสายหลอก) = แพ้ ต้องข้ามวันก่อนถึงจะแพ้ ระหว่างวันยังหาเงินกลับมาได้
+        if (PlayerStats.Instance != null && PlayerStats.Instance.Money < 0)
+        {
+            int negDay = GameClock.Instance != null ? GameClock.Instance.Day : 1;
+            string negMsg = $"เงินติดลบ ({PlayerStats.Instance.Money})\nเพราะโดนหลอกจากสาย\n\nอยู่รอดมาได้ {negDay} วัน";
+            if (StarvationSystem.Instance != null) StarvationSystem.Instance.TriggerLoseWithMessage(negMsg);
+            else SaveSystem.Delete();
+            yield return new WaitUntil(() => false);
+        }
+
         // หักบิลที่ถึงกำหนดอัตโนมัติ ถ้าเงินสดไม่พอจ่าย = แพ้
         int billsAutoPaid = 0;
         if (BillSystem.Instance != null)

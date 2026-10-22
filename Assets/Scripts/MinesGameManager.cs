@@ -187,11 +187,14 @@ public class MinesGameManager : MonoBehaviour
     {
         if (GameClock.Instance != null)
         {
-        
-            return (GameClock.Instance.Hour * 3600) + (GameClock.Instance.Minute * 60);
+            int day = GameClock.Instance.Day;
+            int hour = GameClock.Instance.Hour;
+            int minute = GameClock.Instance.Minute;
+
+            return (day * 86400) + (hour * 3600) + (minute * 60);
         }
-        
-        return (int)Time.time; 
+
+        return (int)Time.time;
     }
 
     private IEnumerator InGameCooldownRoutine()
@@ -199,9 +202,19 @@ public class MinesGameManager : MonoBehaviour
         if (cooldownText != null) cooldownText.gameObject.SetActive(true);
 
         int currentInGameSeconds = GetCurrentInGameSeconds();
+        int lastInGameSeconds = currentInGameSeconds;
 
         while (targetTotalInGameSeconds > currentInGameSeconds)
         {
+            // 💡 เช็กว่ามีการกดข้ามวันหรือเวลาร่นถอยหลังกลับไปวันใหม่หรือไม่
+            if (currentInGameSeconds < lastInGameSeconds)
+            {
+                // พลอยข้ามวัน ให้หลุดจาก Loop คูลดาวน์ทันที
+                break;
+            }
+
+            lastInGameSeconds = currentInGameSeconds;
+
             int targetHour = (targetTotalInGameSeconds / 3600) % 24;
             int targetMinute = (targetTotalInGameSeconds % 3600) / 60;
             int targetSecond = targetTotalInGameSeconds % 60;
@@ -210,17 +223,17 @@ public class MinesGameManager : MonoBehaviour
 
             if (cooldownText != null)
             {
-                cooldownText.text = $"⏳ ติด Cooldown... รอบต่อไปจะเริ่มเวลาในเกม: {targetTimeString}";
+                cooldownText.text = $"⏳ ติด Cooldown... เริ่มเวลาในเกม: {targetTimeString}";
             }
-            
+
             yield return new WaitForSeconds(0.2f);
             currentInGameSeconds = GetCurrentInGameSeconds();
         }
 
         if (cooldownText != null) cooldownText.gameObject.SetActive(false);
+
+        GenerateGrid();
         
-        
-        GenerateGrid(); 
     }
 
     // ----------------------------------------------------------------------

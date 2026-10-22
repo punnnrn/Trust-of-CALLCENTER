@@ -19,7 +19,12 @@ MonoBehaviour:
   maxDay: 2
   maxCalls: 0
   minMoney: 0
-  timeWindows: []
+  timeWindows:
+  - label: 
+    startHour: 10
+    startMinute: 0
+    endHour: 10
+    endMinute: 30
   conversation:
   - speaker: 0
     text: "\u0E2A\u0E27\u0E31\u0E2A\u0E14\u0E35\u0E04\u0E23\u0E31\u0E1A \u0E1C\u0E21\u0E42\u0E17\u0E23\u0E21\u0E32\u0E40\u0E23\u0E37\u0E48\u0E2D\u0E07\u0E1A\u0E34\u0E25\u0E40\u0E14\u0E37\u0E2D\u0E19\u0E19\u0E35\u0E49\u0E04\u0E23\u0E31\u0E1A"
