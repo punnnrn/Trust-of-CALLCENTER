@@ -17771,7 +17771,7 @@ GameObject:
   - component: {fileID: 1968906354}
   - component: {fileID: 1968906353}
   m_Layer: 5
-  m_Name: Samlong
+  m_Name: Sumlong_Panel
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
