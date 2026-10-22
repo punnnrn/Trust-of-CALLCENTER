@@ -1,6 +1,8 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 
 public class MinesGameManager : MonoBehaviour
@@ -10,6 +12,11 @@ public class MinesGameManager : MonoBehaviour
     public int bombCount = 3;     
     public int rewardPerGem = 10; 
     public float gameOverDelay = 2.0f; 
+
+    [Header("Cooldown Settings (In-Game Seconds)")]
+    [Tooltip("จำนวนวินาทีคูลดาวน์ตามเวลาในเกม (เช่น 60 = 1 นาทีในเกม)")]
+    public int cooldownInGameSeconds = 60; // ⏱️ คูลดาวน์เป็นวินาทีในเกม
+
     [Header("References")]
     public Transform gridContainer;
     public GameObject tilePrefab;
@@ -18,7 +25,8 @@ public class MinesGameManager : MonoBehaviour
 
     [Header("UI Text Display")]
     public TextMeshProUGUI currentRewardText; 
-    public TextMeshProUGUI totalWinText;       
+    public TextMeshProUGUI totalWinText;      
+    public TextMeshProUGUI cooldownText;      // ลาก Text สำหรับโชว์เวลา คูลดาวน์ มาใส่
 
     [Header("Win / Lose Panels")]
     public GameObject winPanel;   
@@ -33,17 +41,20 @@ public class MinesGameManager : MonoBehaviour
     private int revealedGemsCount = 0;
     private int totalGemsNeeded = 0;
 
+    private int targetTotalInGameSeconds = -1; // วินาทีรวมในเกมที่จะหมด Cooldown
+    private Coroutine cooldownCoroutine;
+
     void Start()
     {
-        GenerateGrid();
+        // ปิดหน้าจอไว้ตอนเริ่มเกมหลัก
+        if (minigamePanel != null) minigamePanel.SetActive(false);
     }
 
     public void GenerateGrid()
     {
-        StopAllCoroutines();
-
         if (winPanel != null) winPanel.SetActive(false);
         if (losePanel != null) losePanel.SetActive(false);
+        if (cooldownText != null) cooldownText.gameObject.SetActive(false);
 
         currentReward = 0;
         revealedGemsCount = 0;
@@ -65,7 +76,7 @@ public class MinesGameManager : MonoBehaviour
         for (int i = 0; i < tileTypes.Count; i++)
         {
             bool temp = tileTypes[i];
-            int randomIndex = Random.Range(i, tileTypes.Count);
+            int randomIndex = UnityEngine.Random.Range(i, tileTypes.Count);
             tileTypes[i] = tileTypes[randomIndex];
             tileTypes[randomIndex] = temp;
         }
@@ -107,23 +118,19 @@ public class MinesGameManager : MonoBehaviour
     {
         AddRewardToPlayer();
         if (winPanel != null) winPanel.SetActive(true);
+        StartCooldown();
     }
 
-    // เมื่อกดโดนระเบิด
     public void GameOver()
     {
         Debug.Log("เหยียบระเบิด! ช่องที่กดกำลังกระพริบ...");
         
-      
         foreach (var tile in tiles)
         {
             tile.RevealAll();
         }
 
-
         AddRewardToPlayer();
-
-        
         StartCoroutine(GameOverRoutine());
     }
 
@@ -140,6 +147,8 @@ public class MinesGameManager : MonoBehaviour
         {
             losePanel.SetActive(true);
         }
+
+        StartCooldown();
     }
 
     private void AddRewardToPlayer()
@@ -150,16 +159,101 @@ public class MinesGameManager : MonoBehaviour
         }
     }
 
+    // ----------------------------------------------------------------------
+    // ⏱️ ระบบ COOLDOWN ตามเวลาในเกม
+    // ----------------------------------------------------------------------
+
+    private void StartCooldown()
+    {
+        
+        targetTotalInGameSeconds = GetCurrentInGameSeconds() + cooldownInGameSeconds;
+        LockTilesForCooldown();
+
+        if (cooldownCoroutine != null) StopCoroutine(cooldownCoroutine);
+        cooldownCoroutine = StartCoroutine(InGameCooldownRoutine());
+    }
+
+    private void LockTilesForCooldown()
+    {
+        // ล็อคกระเบื้องทุกช่องในตารางไม่ให้กดได้ระหว่างคูลดาวน์
+        foreach (var tile in tiles)
+        {
+            Button btn = tile.GetComponent<Button>();
+            if (btn != null) btn.interactable = false;
+        }
+    }
+
+    private int GetCurrentInGameSeconds()
+    {
+        if (GameClock.Instance != null)
+        {
+        
+            return (GameClock.Instance.Hour * 3600) + (GameClock.Instance.Minute * 60);
+        }
+        
+        return (int)Time.time; 
+    }
+
+    private IEnumerator InGameCooldownRoutine()
+    {
+        if (cooldownText != null) cooldownText.gameObject.SetActive(true);
+
+        int currentInGameSeconds = GetCurrentInGameSeconds();
+
+        while (targetTotalInGameSeconds > currentInGameSeconds)
+        {
+            int targetHour = (targetTotalInGameSeconds / 3600) % 24;
+            int targetMinute = (targetTotalInGameSeconds % 3600) / 60;
+            int targetSecond = targetTotalInGameSeconds % 60;
+
+            string targetTimeString = $"{targetHour:D2}:{targetMinute:D2}:{targetSecond:D2}";
+
+            if (cooldownText != null)
+            {
+                cooldownText.text = $"⏳ ติด Cooldown... รอบต่อไปจะเริ่มเวลาในเกม: {targetTimeString}";
+            }
+            
+            yield return new WaitForSeconds(0.2f);
+            currentInGameSeconds = GetCurrentInGameSeconds();
+        }
+
+        if (cooldownText != null) cooldownText.gameObject.SetActive(false);
+        
+        
+        GenerateGrid(); 
+    }
+
+    // ----------------------------------------------------------------------
+    // UI Panel Open/Close (ปุ่มเปิด / ปุ่ม X ปิดเกม)
+    // ----------------------------------------------------------------------
+
     public void OpenMinigame()
     {
         if (menuButtonPanel != null) menuButtonPanel.SetActive(false);
         if (minigamePanel != null) minigamePanel.SetActive(true);
-        GenerateGrid();
+
+        int currentInGameSeconds = GetCurrentInGameSeconds();
+
+        // เช็กว่ายังมีคูลดาวน์เหลืออยู่ไหม
+        if (targetTotalInGameSeconds > currentInGameSeconds)
+        {
+            LockTilesForCooldown();
+            
+            
+            if (cooldownCoroutine == null)
+            {
+                cooldownCoroutine = StartCoroutine(InGameCooldownRoutine());
+            }
+        }
+        else
+        {
+            GenerateGrid();
+        }
     }
 
     public void CloseMinigame()
     {
-        StopAllCoroutines();
+        
         if (minigamePanel != null) minigamePanel.SetActive(false);
         if (menuButtonPanel != null) menuButtonPanel.SetActive(true);
     }
