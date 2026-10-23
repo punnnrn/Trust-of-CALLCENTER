@@ -7198,6 +7198,11 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 7a0a167a075866f49ba1d47b42680aa6, type: 2}
   - {fileID: 11400000, guid: 8fbef1dcbc42feb4bbedf479f76d62ff, type: 2}
   - {fileID: 11400000, guid: 62dde8238e962034bbf4d506c70a9951, type: 2}
+  - {fileID: 11400000, guid: b1299fb3ce801624b8ddfa5655c2cb98, type: 2}
+  - {fileID: 11400000, guid: a284d2e9865cfb54cb4f7545dc2bd231, type: 2}
+  - {fileID: 11400000, guid: 050f22a63097d4e45860e76d281c1045, type: 2}
+  - {fileID: 11400000, guid: 7fa14bc8463332e458871db71e56169e, type: 2}
+  - {fileID: 11400000, guid: 8ee702fa74b7bf240a94e522df23b986, type: 2}
   delayBetweenCalls: {x: 1.5, y: 3.5}
   ringTimeoutRange: {x: 8, y: 20}
   answerLabel: "\u0E23\u0E31\u0E1A\u0E2A\u0E32\u0E22"
