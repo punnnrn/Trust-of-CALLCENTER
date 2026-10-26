@@ -29,6 +29,11 @@ public class NumberGuessingGame : MonoBehaviour
     [Tooltip("จำนวนวินาทีคูลดาวน์ตามเวลาในเกม (เช่น 60 = 1 นาทีในเกม)")]
     [SerializeField] private int cooldownInGameSeconds = 60;
 
+    [Header("Audio")]
+    [SerializeField] private AudioSource audioSource;   
+    [SerializeField] private AudioClip guessSound;      
+    [SerializeField, Range(0f, 1f)] private float guessVolume = 1f;
+
     private int targetNumber;
     private int currentAttempts;
     private bool isGameOver = false;
@@ -39,6 +44,12 @@ public class NumberGuessingGame : MonoBehaviour
 
     private void Awake()
     {
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+        }
+
         guessButton.onClick.AddListener(OnGuessSubmitted);
         inputField.onSubmit.AddListener(delegate { OnGuessSubmitted(); });
 
@@ -51,7 +62,7 @@ public class NumberGuessingGame : MonoBehaviour
         {
             closeButton.onClick.AddListener(CloseGamePanel);
         }
-    }
+}
 
     private void Start()
     {
@@ -126,6 +137,8 @@ public class NumberGuessingGame : MonoBehaviour
     {
         if (isGameOver) return;
 
+        PlayGuessSound();
+
         if (int.TryParse(inputField.text, out int userGuess))
         {
             ProcessGuess(userGuess);
@@ -137,6 +150,14 @@ public class NumberGuessingGame : MonoBehaviour
 
         inputField.text = "";
         inputField.ActivateInputField();
+    }
+
+    private void PlayGuessSound()
+    {
+        if (guessSound != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(guessSound, guessVolume);
+        }
     }
 
     private void ProcessGuess(int guess)

@@ -53,6 +53,13 @@ public class SpaceshipController : MonoBehaviour
         if (bulletPrefab != null && shootSpawnPoint != null)
         {
             GameObject bullet = Instantiate(bulletPrefab, shootSpawnPoint.position, Quaternion.identity, bulletParent);
+
+            // สั่งเล่นเสียงยิงผ่าน SpaceMonneyManager
+            SpaceMonneyManager manager = FindObjectOfType<SpaceMonneyManager>();
+            if (manager != null)
+            {
+                manager.PlayShootSound();
+            }
         }
     }
 }

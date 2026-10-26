@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Call_GrandmaMissU
   m_EditorClassIdentifier: Assembly-CSharp::CallData
   callerName: "\u0E22\u0E32\u0E22"
-  callerPortrait: {fileID: -2634799857069279492, guid: 84db0b0dcd62b0b4eb03a062e84e2932, type: 3}
+  callerPortrait: {fileID: 291020365942987482, guid: 2c57698e8981f5d438e3a3a3452c0657, type: 3}
   playerPortrait: {fileID: -6093067996207954959, guid: 7276c64a093abb345a5168e1913bad47, type: 3}
   minDay: 1
   maxDay: 0

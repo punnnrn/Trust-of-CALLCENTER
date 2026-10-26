@@ -36,6 +36,11 @@ public class MinesGameManager : MonoBehaviour
     public GameObject minigamePanel;   
     public GameObject menuButtonPanel; 
 
+    [Header("Audio")]
+    public AudioSource audioSource;     
+    public AudioClip bombSound;         
+    [Range(0f, 1f)] public float bombVolume = 1f;
+
     private List<TileController> tiles = new List<TileController>();
     private int currentReward = 0;
     private int revealedGemsCount = 0;
@@ -46,8 +51,14 @@ public class MinesGameManager : MonoBehaviour
 
     void Start()
     {
-        // ปิดหน้าจอไว้ตอนเริ่มเกมหลัก
         if (minigamePanel != null) minigamePanel.SetActive(false);
+
+        
+        if (audioSource == null)
+        {
+            audioSource = gameObject.AddComponent<AudioSource>();
+            audioSource.playOnAwake = false;
+        }
     }
 
     public void GenerateGrid()
@@ -124,7 +135,12 @@ public class MinesGameManager : MonoBehaviour
     public void GameOver()
     {
         Debug.Log("เหยียบระเบิด! ช่องที่กดกำลังกระพริบ...");
-        
+
+        if (bombSound != null && audioSource != null)
+        {
+            audioSource.PlayOneShot(bombSound, bombVolume);
+        }
+
         foreach (var tile in tiles)
         {
             tile.RevealAll();

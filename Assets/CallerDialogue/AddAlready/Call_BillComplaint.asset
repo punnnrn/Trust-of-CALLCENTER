@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Call_BillComplaint
   m_EditorClassIdentifier: Assembly-CSharp::CallData
   callerName: "\u0E04\u0E38\u0E13\u0E2A\u0E21\u0E0A\u0E32\u0E22"
-  callerPortrait: {fileID: -2634799857069279492, guid: 84db0b0dcd62b0b4eb03a062e84e2932, type: 3}
+  callerPortrait: {fileID: 7050622249471950445, guid: 5c8f3bd0dc43dba46a64ff921c2bb35c, type: 3}
   playerPortrait: {fileID: -6093067996207954959, guid: 7276c64a093abb345a5168e1913bad47, type: 3}
   minDay: 1
   maxDay: 2

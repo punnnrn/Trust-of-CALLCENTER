@@ -10,7 +10,7 @@ public class ComputerUIManager : MonoBehaviour
     public GameObject menuButtonPanel; // Panel ปุ่มรวมเมนูบนหน้าจอคอม
 
     // ฟังก์ชันเปิดมินิเกม และซ่อน UI อื่นๆ ทั้งหมด
-    public void OpenMinigame()
+    public void OpenMiniMineUI()
     {
         // 1. ซ่อน UI หน้าต่างอื่นๆ
         CloseAllPanels();

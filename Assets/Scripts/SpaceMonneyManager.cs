@@ -42,12 +42,31 @@ public class SpaceMonneyManager : MonoBehaviour
     [Tooltip("ไม่ใส่ก็ได้ ปุ่มเริ่มเกม จะกดไม่ได้ระหว่างคูลดาวน์")]
     public Button startButton;
 
+    [Header("Audio")]
+    [Tooltip("AudioSource สำหรับเล่นเสียงในมินิเกม (ถ้าไม่ใส่ สคริปต์จะหาให้อัตโนมัติ)")]
+    public AudioSource audioSource;
+    [Tooltip("ไฟล์เสียงตอนยิงกระสุน (.wav / .mp3)")]
+    public AudioClip shootSound;
+    [SerializeField, Range(0f, 1f)] private float shootSVolume = 1f;
+
     private bool isPlaying = false;
     private float cooldownEndTime; // Time.time ที่คูลดาวน์จะหมด (0 = พร้อมเล่น)
 
     private void Start()
     {
         UpdateScoreUI();
+
+        // เช็ค AudioSource ถ้ายังไม่ได้ลากใส่ใน Inspector ให้ดึงจาก GameObject นี้อัตโนมัติ
+        if (audioSource == null)
+        {
+            audioSource = GetComponent<AudioSource>();
+            if (audioSource == null)
+
+            {
+                audioSource = gameObject.AddComponent<AudioSource>();
+                audioSource.playOnAwake = false;
+            }
+        }
     }
 
     private void Update()
@@ -63,6 +82,15 @@ public class SpaceMonneyManager : MonoBehaviour
         {
             SpawnEnemy();
             spawnTimer = 0f;
+        }
+    }
+
+    /// ฟังก์ชันสำหรับเรียกเล่นเสียงยิงกระสุน (สามารถเรียกจาก SpaceshipController ตอนกดยิงได้)
+    public void PlayShootSound()
+    {
+        if (audioSource != null && shootSound != null)
+        {
+            audioSource.PlayOneShot(shootSound, shootSVolume);
         }
     }
 
@@ -106,7 +134,6 @@ public class SpaceMonneyManager : MonoBehaviour
             GameObject enemy = Instantiate(enemyPrefab, enemyParent);
             enemy.GetComponent<RectTransform>().anchoredPosition = spawnPos;
 
-
             // คำนวณความเร็วต่ำสุด-สูงสุด ตามเวฟปัจจุบัน (เวฟยิ่งสูง ยิ่งเร็ว)
             float minSpeed = 100f + (wave * 50f);
             float maxSpeed = 150f + (wave * 70f);
@@ -120,7 +147,6 @@ public class SpaceMonneyManager : MonoBehaviour
             {
                 enemyScript.speed = randomSpeed;
             }
-            // ---------------------------------------------
 
             enemiesSpawned++; // นับว่าเสกมาแล้วกี่ตัว
         }
