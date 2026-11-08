@@ -45,6 +45,8 @@ public class BillSystem : MonoBehaviour
     [Header("Bills")]
     [Tooltip("บิลใบแรกออกวันที่เท่าไหร่ (2 = เริ่มมีบิลวันที่ 2 วันที่ 1 ยังไม่มี)")]
     [SerializeField, Min(1)] private int firstBillDay = 2;
+    [Tooltip("บิลแพงขึ้นวันละกี่เท่า (0.04 = +4% ต่อวัน เทียบกับวันที่บิลเริ่มออก)")]
+    [SerializeField, Min(0f)] private float billGrowthPerDay = 0.04f;
 
     [SerializeField] private List<BillType> types = new List<BillType>
     {
@@ -179,10 +181,11 @@ public class BillSystem : MonoBehaviour
             int max = Mathf.Max(min, t.amountMax);
             System.Random rng = new System.Random(day * 100 + i); // ยอดคงที่ตามวัน กัน Continue เพื่อสุ่มยอดใหม่
 
+            float scale = 1f + billGrowthPerDay * Mathf.Max(0, day - firstBillDay);
             bills.Add(new Bill
             {
                 typeIndex = i,
-                amount = rng.Next(min, max + 1),
+                amount = Mathf.RoundToInt(rng.Next(min, max + 1) * scale),
                 billDay = day,
                 dueDay = day + Mathf.Max(0, t.dueInDays)
             });

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -33,13 +34,13 @@ public class SpaceMonneyManager : MonoBehaviour
     public TMP_Text rewardText;
 
     [Header("Cooldown & Hunger")]
-    [Tooltip("เวลาพัก (วินาที) หลังจบรอบ ก่อนจะเล่นรอบใหม่ได้ (นับตามเวลาจริง หยุดนับตอน Pause)")]
-    public float cooldownSeconds = 60f;
+    [Tooltip("จำนวนวินาทีคูลดาวน์ตามเวลาในเกม (เช่น 60 = 1 นาทีในเกม, 10800 = 3 ชั่วโมงในเกม)")]
+    public int cooldownInGameSeconds = 60;
     [Tooltip("ความหิวที่ลดลงทุกครั้งที่จบรอบ (ชนะ/แพ้/กดปิดกลางเกม)")]
     public float hungerCostPerRound = 10f;
-    [Tooltip("ไม่ใส่ก็ได้ ใช้โชว์ \"พักก่อน รออีก X วินาที\"")]
+    [Tooltip("ไม่ใส่ก็ได้ ใช้โชว์ \"ติด Cooldown... เริ่มเวลาในเกม: HH:MM:SS\" จะโผล่เองตอนติดคูลดาวน์ และซ่อนเองเมื่อพร้อมเล่น")]
     public TMP_Text cooldownText;
-    [Tooltip("ไม่ใส่ก็ได้ ปุ่มเริ่มเกม จะกดไม่ได้ระหว่างคูลดาวน์")]
+    [Tooltip("ไม่ใช้แล้ว (ปุ่ม/ไอคอนจะกดได้ตลอด ถ้าติดคูลดาวน์จะเปิดหน้าต่างมาโชว์เวลา) เว้นว่างได้")]
     public Button startButton;
 
     [Header("Audio")]
@@ -50,7 +51,12 @@ public class SpaceMonneyManager : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float shootSVolume = 1f;
 
     private bool isPlaying = false;
-    private float cooldownEndTime; // Time.time ที่คูลดาวน์จะหมด (0 = พร้อมเล่น)
+
+    /// กำลังเล่นรอบอยู่ไหม (SpaceshipController ใช้เช็คว่าให้ควบคุมยานได้หรือยัง)
+    public bool IsPlaying => isPlaying;
+    private int targetTotalInGameSeconds = -1; // เวลาในเกม (วินาทีรวม) ที่คูลดาวน์จะหมด (-1 = พร้อมเล่น)
+    private string cooldownMessage = "";
+    private Coroutine cooldownRoutine;
 
     private void Start()
     {
@@ -94,16 +100,31 @@ public class SpaceMonneyManager : MonoBehaviour
         }
     }
 
+    /// กดไอคอนเกมบนคอม (ผูกกับ OnClick ของไอคอน): เปิดหน้าต่างเกมเสมอ
+    /// ถ้าติดคูลดาวน์ จะโชว์เวลาในเกมที่เล่นได้อีกครั้ง แล้วเริ่มรอบใหม่ให้เองเมื่อคูลดาวน์หมด (เหมือน MalwareGameManager)
     public void StartGamePlay()
     {
         if (isPlaying) return;
 
-        // ยังอยู่ในช่วงคูลดาวน์ ยังเริ่มรอบใหม่ไม่ได้
-        if (CooldownRemaining() > 0f)
+        if (IsOnCooldown())
         {
+            // เปิดหน้าต่างมาดูเวลาคูลดาวน์ (ซ่อนหน้าแพ้/ชนะเก่าที่อาจค้างอยู่)
+            if (winPanel != null) winPanel.SetActive(false);
+            if (losePanel != null) losePanel.SetActive(false);
+            if (computerMenuButtonPanel != null) computerMenuButtonPanel.SetActive(false);
+            if (SpaceMonneyUI != null) SpaceMonneyUI.SetActive(true);
+
             UpdateCooldownUI();
+            if (cooldownRoutine == null) cooldownRoutine = StartCoroutine(CooldownRoutine());
             return;
         }
+
+        BeginRound();
+    }
+
+    private void BeginRound()
+    {
+        StopCooldownRoutine();
 
         isPlaying = true;
         score = 0;
@@ -220,6 +241,8 @@ public class SpaceMonneyManager : MonoBehaviour
         // ปิดกลางรอบ = ยอมแพ้ ยังนับว่าจบรอบ (กันกดปิดหนีก่อนแพ้เพื่อเลี่ยงคูลดาวน์/ความหิว)
         if (isPlaying) FinishRound();
 
+        StopCooldownRoutine(); // ปิดหน้าต่างแล้วไม่ต้องเริ่มรอบใหม่ให้เอง (เปิดไอคอนใหม่ค่อยเริ่ม)
+
         isPlaying = false;
         ClearEntities();
 
@@ -232,7 +255,8 @@ public class SpaceMonneyManager : MonoBehaviour
     public void ResetForNewDay()
     {
         isPlaying = false;
-        cooldownEndTime = 0f;
+        targetTotalInGameSeconds = -1;
+        StopCooldownRoutine();
         ClearEntities();
 
         if (winPanel != null) winPanel.SetActive(false);
@@ -247,22 +271,71 @@ public class SpaceMonneyManager : MonoBehaviour
 
     private void FinishRound()
     {
-        cooldownEndTime = Time.time + cooldownSeconds;
+        // เริ่มคูลดาวน์ตามเวลาในเกม แล้วเตรียมข้อความโชว์เวลาที่จะเล่นได้อีกครั้ง
+        targetTotalInGameSeconds = GetCurrentInGameSeconds() + cooldownInGameSeconds;
+
+        int targetHour = (targetTotalInGameSeconds / 3600) % 24;
+        int targetMinute = (targetTotalInGameSeconds % 3600) / 60;
+        int targetSecond = targetTotalInGameSeconds % 60;
+        cooldownMessage = $"⏳ ติด Cooldown... เล่นอีกครั้งได้ในเวลา: {targetHour:D2}:{targetMinute:D2}:{targetSecond:D2}";
 
         if (HungerSystem.Instance != null)
             HungerSystem.Instance.Drain(hungerCostPerRound);
+
+        // รอจนคูลดาวน์หมดแล้วเริ่มรอบใหม่ให้เอง ถ้าหน้าต่างเกมยังเปิดอยู่
+        StopCooldownRoutine();
+        cooldownRoutine = StartCoroutine(CooldownRoutine());
     }
 
-    private float CooldownRemaining() => Mathf.Max(0f, cooldownEndTime - Time.time);
+    private IEnumerator CooldownRoutine()
+    {
+        while (IsOnCooldown())
+            yield return new WaitForSeconds(0.2f);
+
+        cooldownRoutine = null;
+        UpdateCooldownUI();
+
+        // เริ่มรอบใหม่ให้เอง เฉพาะตอนหน้าต่างเกมยังเปิดอยู่
+        if (SpaceMonneyUI == null || SpaceMonneyUI.activeSelf)
+            BeginRound();
+    }
+
+    private void StopCooldownRoutine()
+    {
+        if (cooldownRoutine == null) return;
+        StopCoroutine(cooldownRoutine);
+        cooldownRoutine = null;
+    }
+
+    private bool IsOnCooldown() => targetTotalInGameSeconds > GetCurrentInGameSeconds();
+
+    /// วินาทีรวมตามเวลาในเกม (นับตั้งแต่วันที่ 1) ใช้สูตรเดียวกับ MalwareGameManager
+    private int GetCurrentInGameSeconds()
+    {
+        if (GameClock.Instance != null)
+        {
+            int day = GameClock.Instance.Day;
+            int hour = GameClock.Instance.Hour;
+            int minute = GameClock.Instance.Minute;
+
+            return (day * 86400) + (hour * 3600) + (minute * 60);
+        }
+
+        return (int)Time.time;
+    }
 
     private void UpdateCooldownUI()
     {
-        float remaining = CooldownRemaining();
-        bool ready = remaining <= 0f;
+        bool onCooldown = IsOnCooldown();
 
-        if (startButton != null) startButton.interactable = ready;
         if (cooldownText != null)
-            cooldownText.text = ready ? "" : $"พักก่อน รออีก {Mathf.CeilToInt(remaining)} วินาที";
+        {
+            if (cooldownText.gameObject.activeSelf != onCooldown)
+                cooldownText.gameObject.SetActive(onCooldown);
+
+            if (onCooldown && cooldownText.text != cooldownMessage)
+                cooldownText.text = cooldownMessage;
+        }
     }
 
     // ---------------- Cleanup ----------------

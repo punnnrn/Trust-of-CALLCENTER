@@ -108,6 +108,7 @@ public class CallCenterManager : MonoBehaviour
     private bool nextDayPressed;
     private bool popupClicked;
     private bool phoneOpened;
+    private bool callsBlocked;
 
     private RectTransform phoneRect;
     private Vector2 phoneShownPos;
@@ -239,6 +240,9 @@ public class CallCenterManager : MonoBehaviour
 
     /// เรียกจากปุ่มนอน: นอนเป็นใหญ่สุด ตัดทุกอย่างทิ้งทันที ไม่ว่าจะมีสายดังอยู่ หรือกำลังติด dialogue อยู่ตรงไหนก็ตาม
     /// แล้วข้ามไปหน้าสรุปผลจบวันเลย สายที่ค้างอยู่ตอนนั้นจะถูกยกเลิกไปเฉยๆ (ไม่นับเป็นรับ/ไม่รับ/พลาด)
+    /// 
+    public void SetCallsBlocked(bool blocked) => callsBlocked = blocked;
+
     public void ForceSleepNow()
     {
         // หยุด coroutine หลักทั้งสาย (RunGame -> PlayOneDay -> HandleCall -> RingPhase/TalkPhase/...)
@@ -290,6 +294,7 @@ public class CallCenterManager : MonoBehaviour
     private IEnumerator PlayOneDay()
     {
         moneyAtDayStart = PlayerStats.Instance != null ? PlayerStats.Instance.Money : 0;
+        callsBlocked = false; // เริ่มวันใหม่ = รับสายได้ตามปกติ
         callsAnsweredToday = 0;
         callsMissedToday = 0;
         jobsAcceptedToday = 0;
@@ -302,13 +307,14 @@ public class CallCenterManager : MonoBehaviour
             while (t < wait)
             {
                 if (GameClock.Instance != null && GameClock.Instance.IsDayEnded) break;
-                t += Time.deltaTime;
+                if (!callsBlocked) t += Time.deltaTime;
                 yield return null;
             }
 
             if (GameClock.Instance != null && GameClock.Instance.IsDayEnded) break;
 
             CallData call = PickRandomEligibleCall();
+            if (callsBlocked) continue; // ห้ามโทรเข้ามาระหว่างเลือกนอน/กำลังนอน
             if (call == null) continue; // ยังไม่มีสายไหนเข้าเงื่อนไขวันนี้ รอสุ่มรอบถัดไป
 
             yield return HandleCall(call);

@@ -241,7 +241,7 @@ public class NumberGuessingGame : MonoBehaviour
             int targetSecond = targetTotalInGameSeconds % 60;
 
             string targetTimeString = $"{targetHour:D2}:{targetMinute:D2}:{targetSecond:D2}";
-            attemptsText.text = $"ติด Cooldown... รอบต่อไปจะเริ่มเวลาในเกม: {targetTimeString}";
+            attemptsText.text = $"ติด Cooldown... เล่นอีกครั้งได้ในเวลา: {targetTimeString}";
 
             yield return new WaitForSeconds(0.2f);
             currentInGameSeconds = GetCurrentInGameSeconds();

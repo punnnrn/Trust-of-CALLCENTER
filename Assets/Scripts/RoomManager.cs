@@ -1,4 +1,5 @@
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -34,7 +35,16 @@ public class RoomManager : MonoBehaviour
     [Tooltip("เวลา (วินาที) ที่คัทซีนเฟดหายหลังกด \"ไม่นอน\"")]
     [SerializeField] private float cancelFadeOutSeconds = 0.5f;
 
+    [Header("เวลานอน")]
+    [Tooltip("นอนได้ตั้งแต่ชั่วโมงนี้เป็นต้นไป (เวลาในเกม) 16 = หลัง 16:00")]
+    [SerializeField, Range(0, 23)] private int sleepStartHour = 16;
+    [Tooltip("ข้อความเตือนตอนกดเตียงเร็วเกินไป ไม่ใส่ก็ได้ (ถ้าไม่ใส่ จะกดแล้วไม่มีอะไรเกิดขึ้น)")]
+    [SerializeField] private TMP_Text sleepHintText;
+    [SerializeField] private string tooEarlyMessage = "นอนได้หลัง {0:00}:00 เท่านั้น";
+    [SerializeField] private float hintSeconds = 2f;
+
     private Coroutine sleepRoutine;
+    private Coroutine hintRoutine;
 
     private void Awake()
     {
@@ -47,6 +57,7 @@ public class RoomManager : MonoBehaviour
 
         if (computerScreenPanel != null) computerScreenPanel.SetActive(false);
         HideCutsceneInstant();
+        if (sleepHintText != null) sleepHintText.gameObject.SetActive(false);
         ShowRoomButtons(true);
     }
 
@@ -57,6 +68,13 @@ public class RoomManager : MonoBehaviour
     {
         if (sleepRoutine != null) return; // กำลังเล่นคัทซีนอยู่
 
+        // ยังไม่ถึงเวลานอน
+        if (GameClock.Instance != null && GameClock.Instance.Hour < sleepStartHour)
+        {
+            ShowSleepHint();
+            return;
+        }
+
         if (sleepConfirmGroup == null)
         {
             // ไม่ได้ต่อคัทซีน: นอนทันทีแบบเดิม
@@ -64,8 +82,28 @@ public class RoomManager : MonoBehaviour
             return;
         }
 
+        // ระหว่างเลือกนอน/กำลังนอน: ไม่ให้มีสายใหม่โทรเข้ามา และหยุดเวลาในเกม
+        CallCenterManager.Instance?.SetCallsBlocked(true);
+        GameClock.Instance?.Pause();
+
         ShowRoomButtons(false);
         sleepRoutine = StartCoroutine(OpenCutsceneRoutine());
+    }
+
+    private void ShowSleepHint()
+    {
+        if (sleepHintText == null) return;
+        if (hintRoutine != null) StopCoroutine(hintRoutine);
+        hintRoutine = StartCoroutine(HintRoutine());
+    }
+
+    private IEnumerator HintRoutine()
+    {
+        sleepHintText.text = string.Format(tooEarlyMessage, sleepStartHour);
+        sleepHintText.gameObject.SetActive(true);
+        yield return new WaitForSecondsRealtime(hintSeconds);
+        sleepHintText.gameObject.SetActive(false);
+        hintRoutine = null;
     }
 
     /// กด "นอน": จบวันจริง (ตัดสาย/บทสนทนาที่ค้างทิ้งทันที) แล้วคัทซีนเฟดหายให้เห็นหน้าสรุปผลวัน
@@ -120,6 +158,10 @@ public class RoomManager : MonoBehaviour
         HideCutsceneInstant();
         ShowRoomButtons(true);
         sleepRoutine = null;
+
+        // ไม่นอนแล้ว: ให้สายโทรเข้ามาได้อีก และเวลาเดินต่อ
+        CallCenterManager.Instance?.SetCallsBlocked(false);
+        GameClock.Instance?.Resume();
     }
 
     private IEnumerator FadeCutscene(float from, float to, float seconds)

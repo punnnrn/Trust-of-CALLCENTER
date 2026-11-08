@@ -13,15 +13,21 @@ public class SpaceshipController : MonoBehaviour
     public Transform shootSpawnPoint;
     public Transform bulletParent; // เอาไว้เก็บกระสุนไม่ให้รก Hierarchy
 
+    private SpaceMonneyManager manager;
+
     private void Start()
     {
         rectTransform = GetComponent<RectTransform>();
+        manager = FindFirstObjectByType<SpaceMonneyManager>(FindObjectsInactive.Include);
     }
 
     private void Update()
     {
         // ตอน Pause ไม่รับ input (ไม่งั้นคลิกปุ่มในเมนู Pause แล้วยิงกระสุนสะสมไว้)
         if (Time.timeScale == 0f) return;
+
+        // ไม่ได้อยู่ในรอบเกม (ติดคูลดาวน์ / หน้าแพ้-ชนะ) = ล็อกการเคลื่อนที่และการยิง
+        if (manager != null && !manager.IsPlaying) return;
 
         Move();
 
@@ -52,14 +58,10 @@ public class SpaceshipController : MonoBehaviour
     {
         if (bulletPrefab != null && shootSpawnPoint != null)
         {
-            GameObject bullet = Instantiate(bulletPrefab, shootSpawnPoint.position, Quaternion.identity, bulletParent);
+            Instantiate(bulletPrefab, shootSpawnPoint.position, Quaternion.identity, bulletParent);
 
             // สั่งเล่นเสียงยิงผ่าน SpaceMonneyManager
-            SpaceMonneyManager manager = FindObjectOfType<SpaceMonneyManager>();
-            if (manager != null)
-            {
-                manager.PlayShootSound();
-            }
+            if (manager != null) manager.PlayShootSound();
         }
     }
 }

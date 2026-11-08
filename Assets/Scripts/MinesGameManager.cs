@@ -239,7 +239,7 @@ public class MinesGameManager : MonoBehaviour
 
             if (cooldownText != null)
             {
-                cooldownText.text = $"⏳ ติด Cooldown... เริ่มเวลาในเกม: {targetTimeString}";
+                cooldownText.text = $"⏳ ติด Cooldown... เล่นอีกครั้งได้ในเวลา: {targetTimeString}";
             }
 
             yield return new WaitForSeconds(0.2f);
