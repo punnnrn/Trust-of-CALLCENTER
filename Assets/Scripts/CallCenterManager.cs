@@ -50,9 +50,19 @@ public class CallCenterManager : MonoBehaviour
     [Tooltip("รูปตัวละครหลักของเรา (Image อีกอัน) ไม่ใส่ก็ได้")]
     [SerializeField] private Image playerPortraitImage;
 
-    [Header("UI - Buttons (ใช้ 2 ปุ่มนี้ทั้งตอนสายเข้าและตอนตัดสินใจ)")]
-    [SerializeField] private Button acceptButton;   // ปุ่มซ้าย: รับสาย / ตกลง
-    [SerializeField] private Button declineButton;  // ปุ่มขวา: วางสาย / ปฏิเสธ
+    [Header("UI - Call Buttons (ตอนสายดัง)")]
+    [Tooltip("ปุ่มรับสาย")]
+    [SerializeField] private Button answerButton;
+    [Tooltip("ปุ่มวางสาย")]
+    [SerializeField] private Button hangUpButton;
+
+    [Header("UI - Choice Buttons (ตอนตัดสินใจหลังคุยจบ)")]
+    [Tooltip("ปุ่มตกลง / รับงาน")]
+    [SerializeField] private Button acceptButton;
+    [Tooltip("ปุ่มปฏิเสธ / ไม่รับ")]
+    [SerializeField] private Button declineButton;
+
+    [Header("UI - Continue")]
     [SerializeField] private Button continueButton;
 
     [Header("Typewriter")]
@@ -85,6 +95,8 @@ public class CallCenterManager : MonoBehaviour
     [Tooltip("ชื่อซีน Main Menu (ต้องตรงกับชื่อไฟล์ซีนเป๊ะๆ และถูกเพิ่มใน Build Settings แล้ว)")]
     [SerializeField] private string mainMenuSceneName = "MainMenu";
 
+    private TMP_Text answerLabelText;
+    private TMP_Text hangUpLabelText;
     private TMP_Text acceptLabelText;
     private TMP_Text declineLabelText;
 
@@ -121,11 +133,19 @@ public class CallCenterManager : MonoBehaviour
     {
         Instance = this;
 
+        answerLabelText = answerButton.GetComponentInChildren<TMP_Text>(true);
+        hangUpLabelText = hangUpButton.GetComponentInChildren<TMP_Text>(true);
         acceptLabelText = acceptButton.GetComponentInChildren<TMP_Text>(true);
         declineLabelText = declineButton.GetComponentInChildren<TMP_Text>(true);
 
+        // ปุ่มสายเข้า: รับสาย / วางสาย
+        answerButton.onClick.AddListener(() => { accepted = true; choiceMade = true; });
+        hangUpButton.onClick.AddListener(() => { accepted = false; choiceMade = true; });
+
+        // ปุ่มตัดสินใจ: ตกลง / ปฏิเสธ
         acceptButton.onClick.AddListener(() => { accepted = true; choiceMade = true; });
         declineButton.onClick.AddListener(() => { accepted = false; choiceMade = true; });
+
         continueButton.onClick.AddListener(OnContinueClicked);
 
         if (popupButton != null)
@@ -144,7 +164,7 @@ public class CallCenterManager : MonoBehaviour
         SetDialogueVisible(false);
         HidePopup();
         callPanel.SetActive(false);
-        SetChoiceButtons(false);
+        HideAllButtons();
         continueButton.gameObject.SetActive(false);
         if (resultPanel != null) resultPanel.SetActive(false);
 
@@ -232,7 +252,7 @@ public class CallCenterManager : MonoBehaviour
         HidePopup();
         popupClicked = false;
         phoneOpened = false;
-        SetChoiceButtons(false);
+        HideAllButtons();
         continueButton.gameObject.SetActive(false);
         isTyping = false;
         skipTyping = false;
@@ -320,7 +340,8 @@ public class CallCenterManager : MonoBehaviour
             callsAnsweredToday++;
             yield return TalkPhase(call);
 
-            SetButtonLabels(
+            // ช่วงตัดสินใจ: ใช้ปุ่ม ตกลง/ปฏิเสธ (คนละชุดกับปุ่มรับสาย/วางสาย)
+            SetChoiceLabels(
                 string.IsNullOrEmpty(call.acceptLabel) ? "รับงาน" : call.acceptLabel,
                 string.IsNullOrEmpty(call.declineLabel) ? "ไม่รับ" : call.declineLabel);
 
@@ -351,7 +372,7 @@ public class CallCenterManager : MonoBehaviour
             // dialog หายไปก่อน แล้วโทรศัพท์ค่อยเลื่อนลงตาม
             SetDialogueVisible(false);
             continueButton.gameObject.SetActive(false);
-            SetChoiceButtons(false);
+            HideAllButtons();
             if (dialogueHideDelay > 0f) yield return new WaitForSeconds(dialogueHideDelay);
 
             yield return SlidePhone(false);
@@ -382,8 +403,8 @@ public class CallCenterManager : MonoBehaviour
         dialogueText.text = "";
         SetDialogueVisible(false); // ตอนสายดัง/เพิ่งหยิบโทรศัพท์ ไม่มี dialog แค่ปุ่มรับสาย-วางสาย
         continueButton.gameObject.SetActive(false);
-        SetChoiceButtons(false);
-        SetButtonLabels(answerLabel, hangUpLabel);
+        HideAllButtons();
+        SetCallLabels(answerLabel, hangUpLabel);
 
         if (ringtone != null) ringtone.Play();
 
@@ -414,7 +435,7 @@ public class CallCenterManager : MonoBehaviour
                     HidePopup();
                     phoneOpened = true;
                     yield return SlidePhone(true);
-                    SetChoiceButtons(true);
+                    SetCallButtons(true); // โชว์ปุ่ม รับสาย/วางสาย
                     continue;
                 }
 
@@ -436,7 +457,7 @@ public class CallCenterManager : MonoBehaviour
 
         if (ringtone != null) ringtone.Stop();
         HidePopup();
-        SetChoiceButtons(false);
+        SetCallButtons(false); // ซ่อนปุ่ม รับสาย/วางสาย
     }
 
     // ---------------- Popup / Phone animation ----------------
@@ -676,7 +697,7 @@ public class CallCenterManager : MonoBehaviour
             callPanel.SetActive(true);
             callerNameText.text = $"สรุปผลวันที่ {day}";
             activeCallerSprite = null; activePlayerSprite = null; HidePortraits();
-            SetChoiceButtons(false);
+            HideAllButtons();
             yield return ShowLineAndWait(body);
             callPanel.SetActive(false);
         }
@@ -762,7 +783,15 @@ public class CallCenterManager : MonoBehaviour
 
     // ---------------- Misc ----------------
 
-    private void SetButtonLabels(string acceptText, string declineText)
+    /// ข้อความปุ่มชุดสายเข้า: รับสาย / วางสาย
+    private void SetCallLabels(string answerText, string hangUpText)
+    {
+        if (answerLabelText != null) answerLabelText.text = answerText;
+        if (hangUpLabelText != null) hangUpLabelText.text = hangUpText;
+    }
+
+    /// ข้อความปุ่มชุดตัดสินใจ: ตกลง / ปฏิเสธ
+    private void SetChoiceLabels(string acceptText, string declineText)
     {
         if (acceptLabelText != null) acceptLabelText.text = acceptText;
         if (declineLabelText != null) declineLabelText.text = declineText;
@@ -776,10 +805,24 @@ public class CallCenterManager : MonoBehaviour
         if (dialogueText != null) dialogueText.gameObject.SetActive(visible);
     }
 
+    /// ปุ่มชุดสายเข้า (รับสาย / วางสาย)
+    private void SetCallButtons(bool active)
+    {
+        answerButton.gameObject.SetActive(active);
+        hangUpButton.gameObject.SetActive(active);
+    }
+
+    /// ปุ่มชุดตัดสินใจ (ตกลง / ปฏิเสธ)
     private void SetChoiceButtons(bool active)
     {
         acceptButton.gameObject.SetActive(active);
         declineButton.gameObject.SetActive(active);
+    }
+
+    private void HideAllButtons()
+    {
+        SetCallButtons(false);
+        SetChoiceButtons(false);
     }
 
     /// เลือกคนที่กำลังพูด (เรียกก่อนพิมพ์ทุกประโยค) รูปจะโชว์เฉพาะคนนั้น ตำแหน่งเดียวกัน
