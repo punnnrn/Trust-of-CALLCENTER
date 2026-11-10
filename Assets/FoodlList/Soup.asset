@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Soup
   m_EditorClassIdentifier: Assembly-CSharp::FoodData
   foodName: "\u0E0B\u0E38\u0E1B"
-  icon: {fileID: 0}
+  icon: {fileID: -7405276109376353535, guid: 79cbb41158af85e4491cb533a5c6a152, type: 3}
   price: 5
   hungerRestore: 2
   minStock: 0

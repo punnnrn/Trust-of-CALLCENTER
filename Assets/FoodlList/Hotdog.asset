@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Hotdog
   m_EditorClassIdentifier: Assembly-CSharp::FoodData
   foodName: "\u0E2E\u0E2D\u0E17\u0E14\u0E2D\u0E01"
-  icon: {fileID: 0}
+  icon: {fileID: -7561133125364977390, guid: c03b4cbc55ce1c94990b2135624a4c89, type: 3}
   price: 15
   hungerRestore: 7
   minStock: 0

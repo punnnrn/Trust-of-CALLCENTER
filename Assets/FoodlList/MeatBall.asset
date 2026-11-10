@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: MeatBall
   m_EditorClassIdentifier: Assembly-CSharp::FoodData
   foodName: "\u0E21\u0E35\u0E17\u0E1A\u0E2D\u0E25"
-  icon: {fileID: 0}
+  icon: {fileID: -7601364149549659503, guid: 9fcfa3279e8c18948ac8aab3f7669a41, type: 3}
   price: 10
   hungerRestore: 5
   minStock: 0

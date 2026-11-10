@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ChickenWing
   m_EditorClassIdentifier: Assembly-CSharp::FoodData
   foodName: "\u0E1B\u0E35\u0E01\u0E44\u0E01\u0E48"
-  icon: {fileID: 0}
+  icon: {fileID: -3862461362858119311, guid: a1181a251a6ab844287494f92cd87407, type: 3}
   price: 20
   hungerRestore: 10
   minStock: 0

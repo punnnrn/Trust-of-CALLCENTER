@@ -31,6 +31,7 @@ public class ShopItemRow : MonoBehaviour
 
         if (iconImage != null)
         {
+            iconImage.preserveAspect = true;
             iconImage.gameObject.SetActive(food.icon != null);
             iconImage.sprite = food.icon;
         }
