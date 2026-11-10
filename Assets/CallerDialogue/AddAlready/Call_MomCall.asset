@@ -15,10 +15,10 @@ MonoBehaviour:
   callerName: "\u0E41\u0E21\u0E48"
   callerPortrait: {fileID: 291020365942987482, guid: 2c57698e8981f5d438e3a3a3452c0657, type: 3}
   playerPortrait: {fileID: -6093067996207954959, guid: 7276c64a093abb345a5168e1913bad47, type: 3}
-  minDay: 1
-  maxDay: 0
+  minDay: 4
+  maxDay: 5
   maxCalls: 0
-  minMoney: 0
+  minMoney: 200
   timeWindows: []
   conversation:
   - speaker: 1
@@ -46,11 +46,11 @@ MonoBehaviour:
     text: "\u0E08\u0E49\u0E32\u0E32 \u0E04\u0E34\u0E14\u0E16\u0E36\u0E07\u0E19\u0E30\u0E08\u0E4A\u0E30\u0E04\u0E19\u0E2A\u0E27\u0E22\u0E02\u0E2D\u0E07\u0E41\u0E21\u0E48"
   acceptLabel: "\u0E23\u0E31\u0E1A\u0E40\u0E07\u0E34\u0E19"
   declineLabel: "\u0E23\u0E31\u0E1A\u0E40\u0E07\u0E34\u0E19"
-  acceptMoney: 0
+  acceptMoney: 200
   acceptCallbackDays: 1
   acceptReply: []
   acceptResult: 
-  declineMoney: 0
+  declineMoney: 200
   declineCallbackDays: 1
   declineReply: []
   declineResult: 

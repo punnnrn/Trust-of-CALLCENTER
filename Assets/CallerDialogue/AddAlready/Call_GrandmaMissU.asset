@@ -16,14 +16,14 @@ MonoBehaviour:
   callerPortrait: {fileID: 291020365942987482, guid: 2c57698e8981f5d438e3a3a3452c0657, type: 3}
   playerPortrait: {fileID: -6093067996207954959, guid: 7276c64a093abb345a5168e1913bad47, type: 3}
   minDay: 1
-  maxDay: 0
-  maxCalls: 0
+  maxDay: 2
+  maxCalls: 1
   minMoney: 0
   timeWindows:
   - label: 
     startHour: 9
     startMinute: 0
-    endHour: 9
+    endHour: 10
     endMinute: 15
   conversation:
   - speaker: 0

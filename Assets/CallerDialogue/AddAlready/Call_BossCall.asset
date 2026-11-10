@@ -15,10 +15,10 @@ MonoBehaviour:
   callerName: "\u0E2B\u0E31\u0E27\u0E2B\u0E19\u0E49\u0E32"
   callerPortrait: {fileID: 7050622249471950445, guid: 5c8f3bd0dc43dba46a64ff921c2bb35c, type: 3}
   playerPortrait: {fileID: -6093067996207954959, guid: 7276c64a093abb345a5168e1913bad47, type: 3}
-  minDay: 1
-  maxDay: 0
-  maxCalls: 0
-  minMoney: 0
+  minDay: 9
+  maxDay: 10
+  maxCalls: 3
+  minMoney: 10000
   timeWindows: []
   conversation:
   - speaker: 1
@@ -60,6 +60,6 @@ MonoBehaviour:
     text: "\u0E04\u0E48\u0E30"
   declineResult: 
   hangUpMoney: 0
-  hangUpCallbackDays: 1
+  hangUpCallbackDays: 0
   hangUpReply: []
   hangUpResult: "\u0E04\u0E38\u0E13\u0E44\u0E21\u0E48\u0E44\u0E14\u0E49\u0E23\u0E31\u0E1A\u0E2A\u0E32\u0E22\u0E19\u0E35\u0E49"

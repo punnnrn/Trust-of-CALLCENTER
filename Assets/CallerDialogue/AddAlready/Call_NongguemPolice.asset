@@ -15,8 +15,8 @@ MonoBehaviour:
   callerName: "\u0E15\u0E33\u0E23\u0E27\u0E08 \u0E2A\u0E19 \u0E19\u0E2D\u0E07\u0E01\u0E36\u0E21"
   callerPortrait: {fileID: 7050622249471950445, guid: 5c8f3bd0dc43dba46a64ff921c2bb35c, type: 3}
   playerPortrait: {fileID: -6093067996207954959, guid: 7276c64a093abb345a5168e1913bad47, type: 3}
-  minDay: 2
-  maxDay: 3
+  minDay: 3
+  maxDay: 5
   maxCalls: 0
   minMoney: 700
   timeWindows: []

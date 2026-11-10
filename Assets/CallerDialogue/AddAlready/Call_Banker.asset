@@ -15,11 +15,16 @@ MonoBehaviour:
   callerName: "\u0E18\u0E19\u0E32\u0E04\u0E32\u0E23"
   callerPortrait: {fileID: 291020365942987482, guid: 2c57698e8981f5d438e3a3a3452c0657, type: 3}
   playerPortrait: {fileID: -6093067996207954959, guid: 7276c64a093abb345a5168e1913bad47, type: 3}
-  minDay: 7
-  maxDay: 5
-  maxCalls: 0
+  minDay: 10
+  maxDay: 13
+  maxCalls: 1
   minMoney: 20010
-  timeWindows: []
+  timeWindows:
+  - label: 
+    startHour: 13
+    startMinute: 30
+    endHour: 15
+    endMinute: 20
   conversation:
   - speaker: 0
     text: "\u0E40\u0E23\u0E35\u0E22\u0E19\u0E04\u0E38\u0E13\u0E25\u0E39\u0E01\u0E04\u0E49\u0E32\u0E23\u0E30\u0E1A\u0E1A\u0E2D\u0E31\u0E15\u0E42\u0E19\u0E21\u0E31\u0E15\u0E34\u0E08\u0E32\u0E01\u0E18\u0E19\u0E32\u0E04\u0E32\u0E23..."

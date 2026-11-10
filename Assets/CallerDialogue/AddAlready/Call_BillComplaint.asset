@@ -17,13 +17,13 @@ MonoBehaviour:
   playerPortrait: {fileID: -6093067996207954959, guid: 7276c64a093abb345a5168e1913bad47, type: 3}
   minDay: 1
   maxDay: 2
-  maxCalls: 0
-  minMoney: 0
+  maxCalls: 1
+  minMoney: 500
   timeWindows:
   - label: 
     startHour: 10
     startMinute: 0
-    endHour: 10
+    endHour: 11
     endMinute: 30
   conversation:
   - speaker: 0
@@ -33,7 +33,7 @@ MonoBehaviour:
       \u0E1C\u0E21\u0E44\u0E21\u0E48\u0E44\u0E14\u0E49\u0E43\u0E0A\u0E49\u0E40\u0E1E\u0E34\u0E48\u0E21\u0E40\u0E25\u0E22\u0E19\u0E30!"
   acceptLabel: "\u0E0A\u0E48\u0E27\u0E22\u0E40\u0E2B\u0E25\u0E37\u0E2D"
   declineLabel: "\u0E1B\u0E0E\u0E34\u0E40\u0E2A\u0E18"
-  acceptMoney: 1000
+  acceptMoney: 500
   acceptCallbackDays: 1
   acceptReply:
   - speaker: 1
