@@ -29,6 +29,12 @@ public class WinScreenManager : MonoBehaviour
     [Header("Scene")]
     [SerializeField] private string mainMenuSceneName = "MainMenu";
 
+    [Header("Cutscene")]
+    [Tooltip("เล่นคัทซีนก่อนขึ้นหน้าชนะ")]
+    [SerializeField] private bool playCutscene = true;
+    [Tooltip("ข้อความที่ขึ้นทีละบรรทัดในคัทซีน เว้นว่างไว้ = ใช้ข้อความมาตรฐาน")]
+    [SerializeField] private string[] cutsceneLines;
+
     private bool hasWon;
 
     private void Awake()
@@ -82,6 +88,15 @@ public class WinScreenManager : MonoBehaviour
         RoomManager r = room != null ? room : FindFirstObjectByType<RoomManager>();
         if (r != null) r.LockForGameOver(); // ปิดคอมที่เปิดค้างอยู่ ซ่อนปุ่มเตียง/คอม
 
+        // คัทซีนก่อนขึ้นหน้าชนะ (ปิดได้ที่ Play Cutscene)
+        if (playCutscene)
+            EndingCutscene.Play(true, cutsceneLines, winText != null ? winText.font : null, RevealWinPanel);
+        else
+            RevealWinPanel();
+    }
+
+    private void RevealWinPanel()
+    {
         if (winPanel != null)
         {
             winPanel.SetActive(true);

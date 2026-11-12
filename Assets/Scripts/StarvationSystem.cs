@@ -39,6 +39,12 @@ public class StarvationSystem : MonoBehaviour
     [Header("Scene")]
     [SerializeField] private string mainMenuSceneName = "MainMenu";
 
+    [Header("Cutscene")]
+    [Tooltip("เล่นคัทซีนก่อนขึ้นหน้าแพ้")]
+    [SerializeField] private bool playCutscene = true;
+    [Tooltip("ข้อความที่ขึ้นทีละบรรทัดในคัทซีน เว้นว่างไว้ = ใช้ข้อความมาตรฐาน")]
+    [SerializeField] private string[] cutsceneLines;
+
     /// จำนวนวันที่ผ่านมาแล้วที่ไม่ได้กินอาหารติดต่อกัน (ไม่นับวันนี้ที่ยังไม่จบ)
     public int DaysWithoutFood { get; private set; }
     public int Limit => daysWithoutFoodToLose;
@@ -137,6 +143,15 @@ public class StarvationSystem : MonoBehaviour
         RoomManager r = room != null ? room : FindFirstObjectByType<RoomManager>();
         if (r != null) r.LockForGameOver(); // ซ่อนปุ่มเตียง/คอม ปิดคอมที่เปิดค้างอยู่
 
+        // คัทซีนก่อนขึ้นหน้าแพ้ (ปิดได้ที่ Play Cutscene)
+        if (playCutscene)
+            EndingCutscene.Play(false, cutsceneLines, loseText != null ? loseText.font : null, () => RevealLosePanel(message));
+        else
+            RevealLosePanel(message);
+    }
+
+    private void RevealLosePanel(string message)
+    {
         if (losePanel != null)
         {
             losePanel.SetActive(true);
