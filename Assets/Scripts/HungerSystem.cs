@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// หลอดความหิว: ไม่ลดไปตามเวลาแล้ว แต่ลดลงทุกครั้งที่ "ทำงานเสร็จ" (รับสายแล้วคุยจนจบ 1 สาย)
+/// หลอดความหิว: ลดลงตามเวลาในเกม และลดลงทุกครั้งที่ "ทำงานเสร็จ" (รับสายแล้วคุยจนจบ 1 สาย)
 /// เรียก OnWorkCompleted() ทุกครั้งที่งานเสร็จ 1 ชิ้น (CallCenterManager เป็นคนเรียกให้อัตโนมัติ)
 /// 100 = อิ่ม, 0 = หิวจัด
 /// </summary>
@@ -19,6 +19,18 @@ public class HungerSystem : MonoBehaviour
     [Header("Drain")]
     [Tooltip("ความหิวที่ลดลงทุกครั้งที่ทำงานเสร็จ 1 ชิ้น (1 สายที่คุยจนจบ)")]
     [SerializeField] private float drainPerWork = 8f;
+    [Tooltip("ความหิวที่ลดลงต่อ 1 ชั่วโมงในเกม (นอกเหนือจากการทำงาน)")]
+    [SerializeField] private float drainPerHour = 1.5f;
+
+    [Header("Hunger Effects")]
+    [Tooltip("ต่ำกว่าสัดส่วนนี้ของหลอด = หิว: ได้เงินจากงานลดลง + ขึ้นข้อความเตือน")]
+    [SerializeField, Range(0f, 1f)] private float hungryThreshold = 0.25f;
+    [Tooltip("ต่ำกว่าสัดส่วนนี้ = หิวจัด: ได้เงินลดลงมาก และถ้าจบวันแบบนี้จะนับเป็นวันอดอยาก (StarvationSystem)")]
+    [SerializeField, Range(0f, 1f)] private float famishedThreshold = 0.10f;
+    [Tooltip("ตัวคูณเงินจากงานตอนหิว (0.75 = ได้ 75%)")]
+    [SerializeField, Range(0f, 1f)] private float hungryIncomeMultiplier = 0.75f;
+    [Tooltip("ตัวคูณเงินจากงานตอนหิวจัด")]
+    [SerializeField, Range(0f, 1f)] private float famishedIncomeMultiplier = 0.5f;
 
     [Header("UI (optional)")]
     [SerializeField] private Slider hungerBar;
@@ -41,6 +53,10 @@ public class HungerSystem : MonoBehaviour
     public float Max => maxHunger;
     public float Normalized => maxHunger <= 0f ? 0f : Current / maxHunger;
     public bool IsStarving => Current <= 0f;
+    /// หิว: ต่ำกว่า hungryThreshold
+    public bool IsHungry => Normalized <= hungryThreshold;
+    /// หิวจัด: ต่ำกว่า famishedThreshold (ตอนจบวันแบบนี้ = นับเป็นวันอดอยาก)
+    public bool IsFamished => Normalized <= famishedThreshold;
 
     private void Awake()
     {
@@ -51,10 +67,18 @@ public class HungerSystem : MonoBehaviour
         Current = Mathf.Clamp(initial, 0f, maxHunger);
     }
 
-    private void Start() => RefreshUI();
+    private void Start()
+    {
+        RefreshUI();
+        if (GameClock.Instance != null) GameClock.Instance.OnHourChanged += HandleHourChanged;
+    }
+
+    // ทุกชั่วโมงในเกม ความหิวลดลงเอง
+    private void HandleHourChanged(int hour) => Drain(drainPerHour);
 
     private void OnDestroy()
     {
+        if (GameClock.Instance != null) GameClock.Instance.OnHourChanged -= HandleHourChanged;
         if (Instance == this) Instance = null;
     }
 
@@ -76,11 +100,32 @@ public class HungerSystem : MonoBehaviour
     /// เติมความหิวให้เต็ม (ใช้ตอนนอน/จบวัน)
     public void RefillFull() => Change(maxHunger - Current);
 
+    /// เติมความหิวขึ้นไปถึงสัดส่วนที่กำหนด (0-1 ของหลอด) ถ้าตอนนี้อิ่มกว่านั้นอยู่แล้วจะไม่ลด
+    /// (ใช้ตอนโดนบังคับนอนเพราะหมดเวลา: เติมไม่เต็มหลอด)
+    public void RefillTo(float normalized)
+    {
+        float target = Mathf.Clamp01(normalized) * maxHunger;
+        if (target > Current) Change(target - Current);
+    }
+
+    /// เติมความหิวเพิ่มขึ้นตามจำนวนที่กำหนด (ใช้ตอนนอน: เติมได้ไม่เต็ม ต้องซื้ออาหารเพิ่ม)
+    public void RefillBy(float amount) => Change(Mathf.Abs(amount));
+
+    /// ปรับเงินที่ได้จากงานตามความหิว (เฉพาะเงินที่ได้เพิ่ม ถ้าเป็นเงินที่เสียจะไม่แตะ)
+    public int AdjustIncome(int amount)
+    {
+        if (amount <= 0) return amount;
+        float mul = IsFamished ? famishedIncomeMultiplier : IsHungry ? hungryIncomeMultiplier : 1f;
+        return Mathf.Max(1, Mathf.RoundToInt(amount * mul));
+    }
+
     // ---------- Internal ----------
 
     private void Change(float delta)
     {
         bool wasStarving = IsStarving;
+        bool wasHungry = IsHungry;
+        bool wasFamished = IsFamished;
 
         float next = Mathf.Clamp(Current + delta, 0f, maxHunger);
         if (Mathf.Approximately(next, Current)) return;
@@ -91,6 +136,12 @@ public class HungerSystem : MonoBehaviour
 
         if (!wasStarving && IsStarving) OnStarving?.Invoke();
         else if (wasStarving && !IsStarving) OnRecovered?.Invoke();
+
+        // เตือนตอนหลอดเพิ่งตกลงมาถึงระดับหิว / หิวจัด
+        if (!wasFamished && IsFamished)
+            NotificationBanner.Show($"หิวจัดแล้ว! เงินจากงานเหลือ {Mathf.RoundToInt(famishedIncomeMultiplier * 100f)}% รีบซื้ออาหาร", 5f);
+        else if (!wasHungry && IsHungry)
+            NotificationBanner.Show($"เริ่มหิวแล้ว! เงินจากงานลดเหลือ {Mathf.RoundToInt(hungryIncomeMultiplier * 100f)}% ควรซื้ออาหาร", 5f);
     }
 
     private void RefreshUI()

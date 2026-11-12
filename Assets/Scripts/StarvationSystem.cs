@@ -23,6 +23,9 @@ public class StarvationSystem : MonoBehaviour
     [SerializeField] private TMP_Text warningText;
     [SerializeField] private string warningFormat = "ไม่ได้กินอาหารมา {0} วันแล้ว! (แพ้เมื่อครบ {1} วัน)";
 
+    [Tooltip("ซ่อนข้อความเตือนเมื่อหลอดความหิวสูงกว่าสัดส่วนนี้")]
+    [SerializeField, Range(0f, 1f)] private float hideWarningAboveHunger = 0.5f;
+
     [Header("Lose Screen")]
     [SerializeField] private GameObject losePanel;
     [SerializeField] private TMP_Text loseText;
@@ -64,15 +67,20 @@ public class StarvationSystem : MonoBehaviour
         if (GameClock.Instance != null) GameClock.Instance.OnDayEnded += HandleDayEnded;
         else Debug.LogWarning("StarvationSystem: ไม่พบ GameClock ใน Scene");
 
+        if (HungerSystem.Instance != null) HungerSystem.Instance.OnHungerChanged += HandleHungerChanged;
+
         RefreshWarning();
     }
 
     private void OnDestroy()
     {
         if (HungerSystem.Instance != null) HungerSystem.Instance.OnAte -= HandleAte;
+        if (HungerSystem.Instance != null) HungerSystem.Instance.OnHungerChanged -= HandleHungerChanged;
         if (GameClock.Instance != null) GameClock.Instance.OnDayEnded -= HandleDayEnded;
         if (Instance == this) Instance = null;
     }
+
+    private void HandleHungerChanged(float value) => RefreshWarning();
 
     private void HandleAte()
     {
@@ -83,7 +91,10 @@ public class StarvationSystem : MonoBehaviour
     /// จบวัน: วันนี้ไม่ได้กิน ตัวนับ +1 / กินแล้ว ตัวนับกลับเป็น 0
     private void HandleDayEnded(int day)
     {
-        DaysWithoutFood = ateToday ? 0 : DaysWithoutFood + 1;
+        // นับเป็น "วันอดอยาก" ถ้าตอนจบวันหลอดความหิวต่ำมาก (ดูจากหลอดจริง ไม่ใช่ว่ากดซื้อของกินหรือเปล่า)
+        HungerSystem hs = HungerSystem.Instance;
+        bool famished = hs != null ? hs.IsFamished : !ateToday;
+        DaysWithoutFood = famished ? DaysWithoutFood + 1 : 0;
         ateToday = false;
         RefreshWarning();
     }
@@ -92,7 +103,9 @@ public class StarvationSystem : MonoBehaviour
     {
         if (warningText == null) return;
 
-        bool show = DaysWithoutFood > 0 && !ateToday;
+        HungerSystem hs = HungerSystem.Instance;
+        bool stillHungry = hs != null ? hs.Normalized < hideWarningAboveHunger : !ateToday;
+        bool show = DaysWithoutFood > 0 && stillHungry;
         warningText.gameObject.SetActive(show);
         if (show) warningText.text = string.Format(warningFormat, DaysWithoutFood, daysWithoutFoodToLose);
     }

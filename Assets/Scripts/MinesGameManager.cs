@@ -5,13 +5,17 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class MinesGameManager : MonoBehaviour
+public class MinesGameManager : MonoBehaviour, ICooldownProvider
 {
     [Header("Settings")]
     public int totalTiles = 25;   
     public int bombCount = 3;     
     public int rewardPerGem = 10; 
     public float gameOverDelay = 2.0f; 
+
+    [Header("Hunger")]
+    [Tooltip("ความหิวที่ลดลงทุกครั้งที่จบรอบ (ชนะ/เหยียบระเบิด)")]
+    public float hungerCostPerRound = 4f;
 
     [Header("Cooldown Settings (In-Game Seconds)")]
     [Tooltip("จำนวนวินาทีคูลดาวน์ตามเวลาในเกม (เช่น 60 = 1 นาทีในเกม)")]
@@ -35,6 +39,9 @@ public class MinesGameManager : MonoBehaviour
     [Header("Computer UI Panels")]
     public GameObject minigamePanel;   
     public GameObject menuButtonPanel; 
+
+    [Header("Tutorial")]
+    public HowToPlayOverlay howToPlay;
 
     [Header("Audio")]
     public AudioSource audioSource;     
@@ -169,16 +176,33 @@ public class MinesGameManager : MonoBehaviour
 
     private void AddRewardToPlayer()
     {
+        // เรียกครั้งเดียวต่อรอบ (ทั้งตอนชนะและเหยียบระเบิด): หิว = ได้เงินลดลง และจบรอบแล้วความหิวลด
+        HungerSystem hs = HungerSystem.Instance;
+        if (hs != null)
+        {
+            currentReward = hs.AdjustIncome(currentReward);
+            hs.Drain(hungerCostPerRound);
+        }
+
         if (currentReward > 0 && PlayerStats.Instance != null)
         {
             PlayerStats.Instance.AddMoney(currentReward);
         }
     }
 
-    // ----------------------------------------------------------------------
-    // ⏱️ ระบบ COOLDOWN ตามเวลาในเกม
-    // ----------------------------------------------------------------------
+    
+    public void ResetForNewDay()
+   {
+        StopAllCoroutines();
+        cooldownCoroutine = null;
+        targetTotalInGameSeconds = -1;
 
+        if (winPanel != null) winPanel.SetActive(false);
+        if (losePanel != null) losePanel.SetActive(false);
+        if (cooldownText != null) cooldownText.gameObject.SetActive(false);
+        if (minigamePanel != null) minigamePanel.SetActive(false);
+        if (menuButtonPanel != null) menuButtonPanel.SetActive(true);
+    }
     private void StartCooldown()
     {
         
@@ -197,6 +221,19 @@ public class MinesGameManager : MonoBehaviour
             Button btn = tile.GetComponent<Button>();
             if (btn != null) btn.interactable = false;
         }
+    }
+
+    public bool IsCoolingDown => targetTotalInGameSeconds > GetCurrentInGameSeconds();
+    public int CooldownRemainingGameSeconds => Mathf.Max(0, targetTotalInGameSeconds - GetCurrentInGameSeconds());
+
+    private string HowToPlayText()
+    {
+        return "<size=130%><b>เกมเปิดช่อง (MiniMines)</b></size>\n\n" +
+               $"- มีทั้งหมด {totalTiles} ช่อง ซ่อนระเบิดไว้ {bombCount} ช่อง ที่เหลือเป็นเพชร\n" +
+               $"- กดเปิดทีละช่อง เจอเพชรได้เงินสะสม +{rewardPerGem} ต่อช่อง\n" +
+               "- ถ้าเปิดเจอระเบิด เกมจบทันที แต่ยังได้เงินที่สะสมไว้\n" +
+               "- เปิดเพชรครบทุกช่องถือว่าชนะ\n" +
+               "- เล่นจบแล้วต้องรอคูลดาวน์ก่อนเล่นใหม่";
     }
 
     private int GetCurrentInGameSeconds()
@@ -239,7 +276,7 @@ public class MinesGameManager : MonoBehaviour
 
             if (cooldownText != null)
             {
-                cooldownText.text = $"⏳ ติด Cooldown... เล่นอีกครั้งได้ในเวลา: {targetTimeString}";
+                cooldownText.text = $"ติดคูลดาวน์\nเล่นได้อีกครั้งเวลา {targetTimeString.Substring(0, 5)} น.";
             }
 
             yield return new WaitForSeconds(0.2f);
@@ -276,6 +313,7 @@ public class MinesGameManager : MonoBehaviour
         }
         else
         {
+            if (howToPlay != null && howToPlay.ShowIfFirstTime(HowToPlayText(), GenerateGrid)) return;
             GenerateGrid();
         }
     }

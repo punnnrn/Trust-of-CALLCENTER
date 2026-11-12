@@ -14,6 +14,8 @@ public enum DialogueSpeaker
 public class DialogueLine
 {
     public DialogueSpeaker speaker = DialogueSpeaker.Caller;
+    [Tooltip("สีหน้าของตัวละครหลักตอนพูดประโยคนี้ (ใช้เฉพาะตอน speaker = Player)")]
+    public FaceExpression expression = FaceExpression.Neutral;
     [TextArea(2, 4)] public string text;
 }
 

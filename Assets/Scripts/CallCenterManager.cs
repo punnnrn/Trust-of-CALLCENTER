@@ -69,12 +69,12 @@ public class CallCenterManager : MonoBehaviour
     [SerializeField] private float charsPerSecond = 40f;
 
     [Header("Audio (optional)")]
-    [Tooltip("ถ้าอยากให้เสียงดังวนซ้ำ ให้ติ๊ก Loop ที่ AudioSource")]
+    
     [SerializeField] private AudioSource ringtone;
 
     [Header("Other Systems")]
     [SerializeField] private HungerSystem hunger;
-    [Tooltip("ตอนจบวันจะปิดมินิเกม/แผงจ่ายหนี้/คอม ให้เหมือนผู้เล่นเปิดคอมใหม่ ไม่ใส่ก็ได้")]
+    
     [SerializeField] private SpaceMonneyManager spaceMonney;
     [SerializeField] private DebtPaymentUI debtPayment;
     [Tooltip("ร้านค้าในคอม จบวันจะปิดแผงให้ ไม่ใส่ก็ได้")]
@@ -84,15 +84,19 @@ public class CallCenterManager : MonoBehaviour
     [SerializeField] private RoomManager room;
 
     [Header("UI - Day Result (โผล่หลังจบวัน)")]
-    [Tooltip("UI อื่นๆ ทั้งหมดที่ไม่ใช่แผงสรุปผล (เช่น ห้อง/เตียง/คอม/ปุ่มจ่ายหนี้/Stats Text) " +
-             "รวมไว้เป็นลูกของ Object เดียวแล้วลากใส่ตรงนี้ จะถูกซ่อนตอนโชว์แผงสรุปผล แล้วเปิดกลับมาเองหลังกดวันถัดไป")]
+    
     [SerializeField] private GameObject gameplayUIRoot;
     [SerializeField] private GameObject resultPanel;
     [SerializeField] private TMP_Text resultTitleText;
     [SerializeField] private TMP_Text resultBodyText;
     [SerializeField] private Button nextDayButton;
     [SerializeField] private Button resultBackToMenuButton;
-    [Tooltip("ชื่อซีน Main Menu (ต้องตรงกับชื่อไฟล์ซีนเป๊ะๆ และถูกเพิ่มใน Build Settings แล้ว)")]
+    
+
+    [SerializeField] private MalwareGameManager malware;
+    [SerializeField] private MinesGameManager mines;
+    [SerializeField] private NumberGuessingGame numberGuess;
+    
     [SerializeField] private string mainMenuSceneName = "MainMenu";
 
     private TMP_Text answerLabelText;
@@ -129,6 +133,7 @@ public class CallCenterManager : MonoBehaviour
     private Sprite activePlayerSprite;
     private DialogueSpeaker currentSpeaker = DialogueSpeaker.Caller;
     private bool dialogueVisible;
+    private FaceExpression currentExpression = FaceExpression.Neutral;
 
     private void Awake()
     {
@@ -148,6 +153,10 @@ public class CallCenterManager : MonoBehaviour
         declineButton.onClick.AddListener(() => { accepted = false; choiceMade = true; });
 
         continueButton.onClick.AddListener(OnContinueClicked);
+
+        // รูปตัวละครหลักในสาย: ใส่ ExpressionPortrait ให้เองเพื่อเปลี่ยนสีหน้าแบบเฟด
+        if (playerPortraitImage != null && playerPortraitImage.GetComponent<ExpressionPortrait>() == null)
+            playerPortraitImage.gameObject.AddComponent<ExpressionPortrait>();
 
         if (popupButton != null)
             popupButton.onClick.AddListener(() => popupClicked = true);
@@ -245,6 +254,7 @@ public class CallCenterManager : MonoBehaviour
 
     public void ForceSleepNow()
     {
+        playerChoseToSleep = true; // กดนอนเอง = ได้เติมความหิวเต็ม (ต่างจากโดนบังคับตอนหมดเวลา)
         // หยุด coroutine หลักทั้งสาย (RunGame -> PlayOneDay -> HandleCall -> RingPhase/TalkPhase/...)
         // ทุกเมธอดข้างบนรันอยู่ใน Unity Coroutine เดียวกัน (เชื่อมด้วย yield return) จึงหยุดทีเดียวจบ
         if (runGameCoroutine != null) StopCoroutine(runGameCoroutine);
@@ -276,6 +286,15 @@ public class CallCenterManager : MonoBehaviour
 
         runGameCoroutine = StartCoroutine(RunGame());
     }
+
+    [Header("Sleep")]
+    [Tooltip("โดนบังคับนอนเพราะหมดเวลา (ไม่ได้กดนอนเอง) ความหิวจะเติมถึงสัดส่วนนี้ของหลอด (0.5 = ครึ่งหลอด) กดนอนเองจะเติมเต็ม")]
+    [SerializeField, Range(0f, 1f)] private float forcedSleepHungerFraction = 0.5f;
+    [Tooltip("กดนอนเอง: ความหิวเติมขึ้นกี่หน่วย (จากหลอด 100) ไม่เติมเต็มแล้ว ต้องซื้ออาหารเพิ่ม")]
+    [SerializeField, Min(0f)] private float sleepRecoverChosen = 30f;
+    [Tooltip("โดนบังคับนอนเพราะหมดเวลา: ความหิวเติมขึ้นกี่หน่วย (น้อยกว่ากดนอนเอง)")]
+    [SerializeField, Min(0f)] private float sleepRecoverForced = 15f;
+    private bool playerChoseToSleep;
 
     // ---------------- Day / Game loop ----------------
 
@@ -361,8 +380,9 @@ public class CallCenterManager : MonoBehaviour
             {
                 jobsAcceptedToday++;
                 callbackDays = call.acceptCallbackDays;
-                PlayerStats.Instance?.AddMoney(call.acceptMoney);
-                yield return ShowOutcome(call.acceptReply, call.acceptResult, call.acceptMoney);
+                int paidMoney = hunger != null ? hunger.AdjustIncome(call.acceptMoney) : call.acceptMoney; // หิว = ได้เงินลดลง
+                PlayerStats.Instance?.AddMoney(paidMoney);
+                yield return ShowOutcome(call.acceptReply, call.acceptResult, paidMoney);
             }
             else
             {
@@ -571,7 +591,7 @@ public class CallCenterManager : MonoBehaviour
         {
             bool isLast = i == lines.Length - 1;
             DialogueLine line = lines[i];
-            SetSpeaker(line != null ? line.speaker : DialogueSpeaker.Caller);
+            SetSpeaker(line != null ? line.speaker : DialogueSpeaker.Caller, line != null ? line.expression : FaceExpression.Neutral);
             string text = line != null ? line.text : "";
 
             if (!isLast)
@@ -604,7 +624,7 @@ public class CallCenterManager : MonoBehaviour
         for (int i = 0; i < reply.Length; i++)
         {
             DialogueLine line = reply[i];
-            SetSpeaker(line != null ? line.speaker : DialogueSpeaker.Caller);
+            SetSpeaker(line != null ? line.speaker : DialogueSpeaker.Caller, line != null ? line.expression : FaceExpression.Neutral);
             string text = line != null ? line.text : "";
             if (i == reply.Length - 1) text += summary;
             yield return ShowLineAndWait(text);
@@ -657,8 +677,14 @@ public class CallCenterManager : MonoBehaviour
             }
         }
 
-        hunger?.RefillFull(); // นอนเต็มอิ่มทุกครั้งที่จบวัน ไม่ว่าจบเพราะหมดเวลาหรือกดนอนเอง
-        ResetComputerForNewDay(); // ปิดมินิเกม/คอม เหมือนเปิดคอมใหม่ในวันถัดไป
+        bool sleptByChoice = playerChoseToSleep;
+        playerChoseToSleep = false;
+        if (sleptByChoice) hunger?.RefillBy(sleepRecoverChosen);
+        else hunger?.RefillBy(sleepRecoverForced); 
+        ResetComputerForNewDay(); 
+        if (malware != null) malware.ResetForNewDay();
+        if (mines != null) mines.ResetForNewDay();
+        if (numberGuess != null) numberGuess.ResetForNewDay();
 
         int totalMoney = PlayerStats.Instance != null ? PlayerStats.Instance.Money : 0;
         int moneyToday = totalMoney - moneyAtDayStart;
@@ -680,9 +706,23 @@ public class CallCenterManager : MonoBehaviour
         if (BillSystem.Instance != null && BillSystem.Instance.UnpaidCount > 0)
             body += $"\nบิลค้างจ่าย: {BillSystem.Instance.UnpaidCount} ใบ";
 
+        if (!sleptByChoice)
+            body += $"\n\nหมดเวลาแล้วถึงนอน: ความหิวเติมได้แค่ +{Mathf.RoundToInt(sleepRecoverForced)}";
+
+        HungerSystem hungerNow = hunger != null ? hunger : HungerSystem.Instance;
+        if (hungerNow != null)
+            body += $"\n\nความหิวตอนนี้: {Mathf.RoundToInt(hungerNow.Normalized * 100f)}%" + (hungerNow.IsHungry ? " หิวมาก! รีบซื้ออาหาร" : "");
+
         StarvationSystem starve = StarvationSystem.Instance;
         if (starve != null && starve.DaysWithoutFood > 0)
             body += $"\n\nเตือน: ไม่ได้กินอาหารมา {starve.DaysWithoutFood}/{starve.Limit} วัน ถ้าครบจะแพ้!";
+
+        // เตือนเรื่องการถูกบังคับนอน (หมดเวลาก่อนกดนอนเอง ความหิวเติมได้ไม่เต็ม)
+        if (sleptByChoice)
+        {
+            int endH = GameClock.Instance != null ? GameClock.Instance.EndHour : 18;
+            body += $"\n\nเตือน: ระวังการถูกบังคับนอน! ถ้าเวลาหมด ({endH:00}:00 น.) ก่อนกดนอนเอง ความหิวจะเติมได้แค่ +{Mathf.RoundToInt(sleepRecoverForced)} (กดนอนเองได้ +{Mathf.RoundToInt(sleepRecoverChosen)})";
+        }
 
         if (resultPanel != null)
         {
@@ -832,9 +872,10 @@ public class CallCenterManager : MonoBehaviour
     }
 
     /// เลือกคนที่กำลังพูด (เรียกก่อนพิมพ์ทุกประโยค) รูปจะโชว์เฉพาะคนนั้น ตำแหน่งเดียวกัน
-    private void SetSpeaker(DialogueSpeaker speaker)
+    private void SetSpeaker(DialogueSpeaker speaker, FaceExpression expression = FaceExpression.Neutral)
     {
         currentSpeaker = speaker;
+        currentExpression = expression;
         RefreshPortraits();
     }
 
@@ -842,17 +883,32 @@ public class CallCenterManager : MonoBehaviour
     {
         bool callerSpeaking = currentSpeaker == DialogueSpeaker.Caller;
         ApplyPortrait(portraitImage, activeCallerSprite, dialogueVisible && callerSpeaking);
-        ApplyPortrait(playerPortraitImage, activePlayerSprite, dialogueVisible && !callerSpeaking);
+
+        // ตัวละครหลัก: ถ้ามีรูปสีหน้าใน Resources/Expressions ใช้ตามสีหน้าของประโยคนั้น
+        // ถ้ายังไม่มีรูปสีหน้าเลย ใช้รูปเดิมของสายนี้ (CallData.playerPortrait) เหมือนเดิม
+        Sprite playerSprite = ExpressionLibrary.Count > 0
+            ? ExpressionLibrary.Resolve(currentExpression, activePlayerSprite)
+            : activePlayerSprite;
+        ApplyPortrait(playerPortraitImage, playerSprite, dialogueVisible && !callerSpeaking);
     }
 
     private void ApplyPortrait(Image img, Sprite sprite, bool show)
     {
         if (img == null) return;
         bool on = show && sprite != null;
+        bool wasActive = img.gameObject.activeSelf;
+        if (on && !wasActive)
+        {
+            img.sprite = sprite; // ตั้งรูปก่อนเปิด จะได้ไม่มีเฟดจากรูปเก่า
+            img.color = Color.white;
+        }
         img.gameObject.SetActive(on);
         if (!on) return;
-        img.sprite = sprite;
         img.color = Color.white;
+
+        ExpressionPortrait fadePortrait = img.GetComponent<ExpressionPortrait>();
+        if (fadePortrait != null && wasActive) fadePortrait.SetSprite(sprite); // ประโยคติดกัน เปลี่ยนสีหน้าแบบเฟด+เด้ง
+        else img.sprite = sprite;
     }
 
     private void HidePortraits()

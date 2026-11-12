@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
-public class SpaceMonneyManager : MonoBehaviour
+public class SpaceMonneyManager : MonoBehaviour, ICooldownProvider
 {
     [Header("UI & Scoring")]
     public TMP_Text scoreText;
@@ -43,6 +43,9 @@ public class SpaceMonneyManager : MonoBehaviour
     [Tooltip("ไม่ใช้แล้ว (ปุ่ม/ไอคอนจะกดได้ตลอด ถ้าติดคูลดาวน์จะเปิดหน้าต่างมาโชว์เวลา) เว้นว่างได้")]
     public Button startButton;
 
+    [Header("Tutorial")]
+    [SerializeField] private HowToPlayOverlay howToPlay;
+
     [Header("Audio")]
     [Tooltip("AudioSource สำหรับเล่นเสียงในมินิเกม (ถ้าไม่ใส่ สคริปต์จะหาให้อัตโนมัติ)")]
     public AudioSource audioSource;
@@ -51,6 +54,16 @@ public class SpaceMonneyManager : MonoBehaviour
     [SerializeField, Range(0f, 1f)] private float shootSVolume = 1f;
 
     private bool isPlaying = false;
+    // รอผู้เล่นกด 'เข้าใจแล้ว' ที่การ์ดวิธีเล่น: ถ้า callback ของการ์ดหลุด Update จะเริ่มรอบให้เองเมื่อการ์ดปิด
+    private bool awaitingTutorial = false;
+
+    [Header("Countdown (หลังกด 'เข้าใจแล้ว')")]
+    [Tooltip("Text ตัวเลขนับกลางจอ ไม่ใส่ก็ได้ (จะรอเฉยๆ ตามเวลา)")]
+    public TMP_Text countdownText;
+    [Tooltip("นับกี่วินาทีก่อนเริ่มรอบ (นับ 1, 2, 3 ...) 0 = ไม่นับ")]
+    public int countdownSeconds = 3;
+    private bool countingDown;
+    private Coroutine countdownRoutine;
 
     /// กำลังเล่นรอบอยู่ไหม (SpaceshipController ใช้เช็คว่าให้ควบคุมยานได้หรือยัง)
     public bool IsPlaying => isPlaying;
@@ -77,6 +90,14 @@ public class SpaceMonneyManager : MonoBehaviour
 
     private void Update()
     {
+        if (awaitingTutorial && !isPlaying)
+        {
+            bool windowOpen = SpaceMonneyUI == null || SpaceMonneyUI.activeInHierarchy;
+            bool overlayOpen = howToPlay != null && howToPlay.gameObject.activeInHierarchy;
+            if (!windowOpen) awaitingTutorial = false;      // ผู้เล่นปิดหน้าต่างเกมระหว่างอ่าน ไม่ต้องเริ่มให้
+            else if (!overlayOpen) BeginAfterTutorial();            // การ์ดปิดแล้ว = เริ่มรอบเลย
+        }
+
         if (!isPlaying)
         {
             UpdateCooldownUI();
@@ -104,7 +125,7 @@ public class SpaceMonneyManager : MonoBehaviour
     /// ถ้าติดคูลดาวน์ จะโชว์เวลาในเกมที่เล่นได้อีกครั้ง แล้วเริ่มรอบใหม่ให้เองเมื่อคูลดาวน์หมด (เหมือน MalwareGameManager)
     public void StartGamePlay()
     {
-        if (isPlaying) return;
+        if (isPlaying || countingDown) return;
 
         if (IsOnCooldown())
         {
@@ -119,11 +140,75 @@ public class SpaceMonneyManager : MonoBehaviour
             return;
         }
 
+        if (howToPlay != null && howToPlay.ShowIfFirstTime(HowToPlayText(), BeginAfterTutorial))
+        {
+            // เปิดหน้าต่างเกมไว้ก่อน แต่ยังไม่เริ่มรอบจนกว่าผู้เล่นจะกด 'เข้าใจแล้ว'
+            awaitingTutorial = true;
+            if (winPanel != null) winPanel.SetActive(false);
+            if (losePanel != null) losePanel.SetActive(false);
+            if (computerMenuButtonPanel != null) computerMenuButtonPanel.SetActive(false);
+            if (SpaceMonneyUI != null) SpaceMonneyUI.SetActive(true);
+            return;
+        }
+
         BeginRound();
+    }
+
+    // ---------------- Countdown ----------------
+
+    /// เรียกหลังผู้เล่นกด 'เข้าใจแล้ว': นับ 1, 2, 3 แล้วค่อยเริ่มรอบ (ยานล็อก ศัตรูยังไม่ออกระหว่างนับ)
+    private void BeginAfterTutorial()
+    {
+        awaitingTutorial = false;
+        if (isPlaying || countingDown) return;
+
+        if (countdownSeconds <= 0) { BeginRound(); return; }
+
+        StopCountdown();
+        countdownRoutine = StartCoroutine(CountdownThenBegin());
+    }
+
+    private IEnumerator CountdownThenBegin()
+    {
+        countingDown = true;
+
+        // เปิดหน้าต่างเกมให้เห็นฉากก่อน แต่ isPlaying ยัง false = ยานขยับ/ยิงไม่ได้ ศัตรูไม่เสก
+        if (winPanel != null) winPanel.SetActive(false);
+        if (losePanel != null) losePanel.SetActive(false);
+        if (computerMenuButtonPanel != null) computerMenuButtonPanel.SetActive(false);
+        if (SpaceMonneyUI != null) SpaceMonneyUI.SetActive(true);
+
+        for (int n = 1; n <= countdownSeconds; n++)
+        {
+            if (countdownText != null)
+            {
+                countdownText.text = n.ToString();
+                countdownText.gameObject.SetActive(true);
+            }
+            yield return new WaitForSeconds(1f);
+        }
+
+        HideCountdown();
+        countingDown = false;
+        countdownRoutine = null;
+        BeginRound();
+    }
+
+    private void StopCountdown()
+    {
+        if (countdownRoutine != null) { StopCoroutine(countdownRoutine); countdownRoutine = null; }
+        countingDown = false;
+        HideCountdown();
+    }
+
+    private void HideCountdown()
+    {
+        if (countdownText != null) countdownText.gameObject.SetActive(false);
     }
 
     private void BeginRound()
     {
+        awaitingTutorial = false;
         StopCooldownRoutine();
 
         isPlaying = true;
@@ -131,6 +216,7 @@ public class SpaceMonneyManager : MonoBehaviour
         wave = 1;
         enemiesSpawned = 0; // รีเซ็ตจำนวนศัตรูเป็น 0
         spawnInterval = 1.5f; // รีเซ็ตความเร็ว
+        spawnTimer = spawnInterval; // ให้ศัตรูตัวแรกออกทันทีที่เริ่มรอบ (ไม่ต้องรอนับ 1.5 วินาที)
         UpdateScoreUI();
         UpdateCooldownUI();
 
@@ -210,6 +296,7 @@ public class SpaceMonneyManager : MonoBehaviour
         if (winPanel != null) winPanel.SetActive(true); // โชว์ UI ชนะ
 
         int randomReward = Random.Range(minReward, maxReward + 1);
+        if (HungerSystem.Instance != null) randomReward = HungerSystem.Instance.AdjustIncome(randomReward); // หิว = ได้เงินลดลง
 
         // อัปเดตข้อความบนจอให้ผู้เล่นเห็นว่าได้เงินเท่าไหร่
         if (rewardText != null)
@@ -238,6 +325,9 @@ public class SpaceMonneyManager : MonoBehaviour
     // ฟังก์ชันปุ่มออกเกม/กลับเมนู (ใช้ผูกกับปุ่ม Close หน้าแพ้-ชนะ)
     public void CloseSpaceMonneyUI()
     {
+        awaitingTutorial = false;
+        StopCountdown();
+
         // ปิดกลางรอบ = ยอมแพ้ ยังนับว่าจบรอบ (กันกดปิดหนีก่อนแพ้เพื่อเลี่ยงคูลดาวน์/ความหิว)
         if (isPlaying) FinishRound();
 
@@ -255,6 +345,8 @@ public class SpaceMonneyManager : MonoBehaviour
     public void ResetForNewDay()
     {
         isPlaying = false;
+        awaitingTutorial = false;
+        StopCountdown();
         targetTotalInGameSeconds = -1;
         StopCooldownRoutine();
         ClearEntities();
@@ -277,7 +369,7 @@ public class SpaceMonneyManager : MonoBehaviour
         int targetHour = (targetTotalInGameSeconds / 3600) % 24;
         int targetMinute = (targetTotalInGameSeconds % 3600) / 60;
         int targetSecond = targetTotalInGameSeconds % 60;
-        cooldownMessage = $"⏳ ติด Cooldown... เล่นอีกครั้งได้ในเวลา: {targetHour:D2}:{targetMinute:D2}:{targetSecond:D2}";
+        cooldownMessage = $"ติดคูลดาวน์\nเล่นได้อีกครั้งเวลา {targetHour:D2}:{targetMinute:D2} น.";
 
         if (HungerSystem.Instance != null)
             HungerSystem.Instance.Drain(hungerCostPerRound);
@@ -305,6 +397,21 @@ public class SpaceMonneyManager : MonoBehaviour
         if (cooldownRoutine == null) return;
         StopCoroutine(cooldownRoutine);
         cooldownRoutine = null;
+    }
+
+    public bool IsCoolingDown => IsOnCooldown();
+    public int CooldownRemainingGameSeconds => Mathf.Max(0, targetTotalInGameSeconds - GetCurrentInGameSeconds());
+
+    private string HowToPlayText()
+    {
+        return "<size=130%><b>ยิงยานอวกาศ (SpaceMonney)</b></size>\n\n" +
+               "- เลื่อนยานซ้าย-ขวาด้วยปุ่ม A / D หรือลูกศรซ้าย / ขวา\n" +
+               "- ยิงด้วยปุ่ม Space หรือคลิกเมาส์ซ้าย\n" +
+               $"- ต้องยิงศัตรูให้ครบ 20 ตัวถึงจะชนะ ได้เงินสุ่ม {minReward}-{maxReward}\n" +
+               "- ถ้ามีศัตรูหลุดลงไปถึงขอบล่างของจอแม้แต่ตัวเดียว จะแพ้ทันที\n" +
+               "- ศัตรูจะเร็วขึ้นเรื่อยๆ ตามเวฟ\n" +
+               $"- จบรอบแล้ว (ชนะหรือแพ้) หลอดความหิวจะลดลง {hungerCostPerRound:0} และต้องรอคูลดาวน์\n\n" +
+               "รอบจะเริ่มหลังกด 'เข้าใจแล้ว'";
     }
 
     private bool IsOnCooldown() => targetTotalInGameSeconds > GetCurrentInGameSeconds();

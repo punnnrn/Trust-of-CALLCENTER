@@ -38,6 +38,10 @@ public class GameClock : MonoBehaviour
     public int Minute { get; private set; }
     public bool IsPaused { get; private set; }
     public bool IsDayEnded { get; private set; }
+    public int StartHour => startHour;
+    public int EndHour => endHour;
+    /// ความเร็วนาฬิกาปัจจุบัน (นาทีในเกมต่อ 1 วินาทีจริง) ใช้ในเครื่องมือ Debug
+    public float MinutesPerRealSecond => gameMinutesPerRealSecond;
 
     /// นาทีที่ผ่านไปในวันนี้นับจากเวลาเริ่มงาน
     public int MinutesSinceStart => (Hour * 60 + Minute) - startHour * 60;
